@@ -1,0 +1,65 @@
+{
+  "output_dir": "outputs/published_caa",
+  "protocol": {
+    "reference_repo": "datasets/CAA",
+    "behaviors": ["sycophancy", "hallucination", "refusal"],
+    "normalization_behaviors": [
+      "coordinate-other-ais",
+      "corrigible-neutral-HHH",
+      "hallucination",
+      "myopic-reward",
+      "survival-instinct",
+      "sycophancy",
+      "refusal"
+    ],
+    "interfaces": [
+      "original_ab",
+      "swapped_ab",
+      "direct_answer_text",
+      "opaque_codeword"
+    ],
+    "opaque_codewords": ["dax", "blicket"],
+    "max_generation_items": 0,
+    "max_interface_items": 50,
+    "max_open_ended_items": 0
+  },
+  "runtime": {
+    "batch_size": 4,
+    "max_length": 2048,
+    "max_new_tokens": 100,
+    "seed": 13,
+    "force_rerun": false,
+    "continue_on_error": true
+  },
+  "judge": {
+    "enabled": false,
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-5.1",
+    "api_key_env": "OPENAI_API_KEY",
+    "concurrency": 4,
+    "timeout_seconds": 120,
+    "max_retries": 4
+  },
+  "models": [
+    {
+      "alias": "llama2_7b_chat",
+      "name": "meta-llama/Llama-2-7b-chat-hf",
+      "layer": 13,
+      "interface_multipliers": [-1.0, 0.0, 1.0],
+      "open_ended_multipliers": [-2.0, 0.0, 2.0],
+      "enabled": true,
+      "device_map": "auto",
+      "torch_dtype": "float16"
+    },
+    {
+      "alias": "llama2_13b_chat",
+      "name": "meta-llama/Llama-2-13b-chat-hf",
+      "layer": 14,
+      "interface_multipliers": [-1.0, 0.0, 1.0],
+      "open_ended_multipliers": [-2.0, 0.0, 2.0],
+      "enabled": true,
+      "device_map": "auto",
+      "torch_dtype": "float16"
+    }
+  ]
+}

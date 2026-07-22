@@ -1,0 +1,66 @@
+{
+  "base_config": "fixed_direction_mapping_audit.example.json",
+  "output_dir": "outputs/normbank/cross_interface",
+  "cross_interface": {
+    "reference_interface": "letter_canonical",
+    "primary_score": "mean_logprob",
+    "minimum_reference_effect": 0.01,
+    "direction_sources": ["raw_pre_answer", "raw_scenario_end", "random", "wrong"],
+    "templates": [
+      {
+        "name": "classify",
+        "question": "Question: In this context, how should the behavior be classified?",
+        "answer_instruction": "Return exactly one answer."
+      },
+      {
+        "name": "social_status",
+        "question": "Question: What is this behavior's social-norm status in the stated context?",
+        "answer_instruction": "Provide one classification only."
+      },
+      {
+        "name": "norm_label",
+        "question": "Question: Choose the norm label that best fits the behavior in context.",
+        "answer_instruction": "Give exactly one label."
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "letter_canonical",
+        "kind": "letter_mcq",
+        "mapping_name": "canonical_taboo_normal_expected",
+        "label_values": {
+          "taboo": "taboo - socially forbidden or unacceptable",
+          "normal": "normal - socially ordinary or acceptable",
+          "expected": "expected - socially expected or encouraged"
+        }
+      },
+      {
+        "name": "letter_reversed",
+        "kind": "letter_mcq",
+        "mapping_name": "reversed_expected_normal_taboo",
+        "label_values": {
+          "taboo": "taboo - socially forbidden or unacceptable",
+          "normal": "normal - socially ordinary or acceptable",
+          "expected": "expected - socially expected or encouraged"
+        }
+      },
+      {
+        "name": "direct_label_completion",
+        "kind": "completion",
+        "label_values": {"taboo": "taboo", "normal": "normal", "expected": "expected"}
+      },
+      {
+        "name": "opaque_completion",
+        "kind": "completion",
+        "key_lines": ["Temporary key: dax means taboo; blicket means normal; wug means expected."],
+        "label_values": {"taboo": "dax", "normal": "blicket", "expected": "wug"}
+      },
+      {
+        "name": "ordinal_completion",
+        "kind": "completion",
+        "key_lines": ["Scale: 1 means taboo; 2 means normal; 3 means expected."],
+        "label_values": {"taboo": "1", "normal": "2", "expected": "3"}
+      }
+    ]
+  }
+}

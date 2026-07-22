@@ -1,0 +1,26 @@
+{
+  "output_dir": "outputs/normbank/context_selectivity",
+  "input_dirs": [
+    "outputs/normbank/cross_interface"
+  ],
+  "optional_input_dirs": [
+    "outputs/normbank/nuisance_baselines"
+  ],
+  "interfaces": [
+    "letter_canonical",
+    "letter_reversed",
+    "direct_label_completion",
+    "opaque_completion"
+  ],
+  "templates": [
+    "classify",
+    "social_status",
+    "norm_label"
+  ],
+  "minimum_base_gap": 0.05,
+  "statistics": {
+    "n_boot": 2000,
+    "confidence": 0.95,
+    "seed": 13
+  }
+}

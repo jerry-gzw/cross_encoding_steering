@@ -1,0 +1,86 @@
+{
+  "base_config": "normbank_cross_interface_steering.example.json",
+  "output_dir": "outputs/normbank/letter_permutations",
+  "cross_interface": {
+    "reference_interface": "letter_canonical",
+    "direction_sources": [
+      "raw_pre_answer",
+      "random_ensemble"
+    ],
+    "random_control_seeds": [
+      13,
+      29,
+      47,
+      71,
+      101
+    ],
+    "interfaces": [
+      {
+        "name": "letter_canonical",
+        "kind": "letter_mcq",
+        "mapping_name": "canonical_taboo_normal_expected",
+        "label_values": {
+          "taboo": "taboo - socially forbidden or unacceptable",
+          "normal": "normal - socially ordinary or acceptable",
+          "expected": "expected - socially expected or encouraged"
+        }
+      },
+      {
+        "name": "letter_permutation_taboo_expected_normal",
+        "kind": "letter_mcq",
+        "mapping_name": "permutation_taboo_expected_normal",
+        "label_values": {
+          "taboo": "taboo - socially forbidden or unacceptable",
+          "normal": "normal - socially ordinary or acceptable",
+          "expected": "expected - socially expected or encouraged"
+        }
+      },
+      {
+        "name": "letter_permutation_normal_taboo_expected",
+        "kind": "letter_mcq",
+        "mapping_name": "permutation_normal_taboo_expected",
+        "label_values": {
+          "taboo": "taboo - socially forbidden or unacceptable",
+          "normal": "normal - socially ordinary or acceptable",
+          "expected": "expected - socially expected or encouraged"
+        }
+      },
+      {
+        "name": "letter_permutation_normal_expected_taboo",
+        "kind": "letter_mcq",
+        "mapping_name": "permutation_normal_expected_taboo",
+        "label_values": {
+          "taboo": "taboo - socially forbidden or unacceptable",
+          "normal": "normal - socially ordinary or acceptable",
+          "expected": "expected - socially expected or encouraged"
+        }
+      },
+      {
+        "name": "letter_permutation_expected_taboo_normal",
+        "kind": "letter_mcq",
+        "mapping_name": "permutation_expected_taboo_normal",
+        "label_values": {
+          "taboo": "taboo - socially forbidden or unacceptable",
+          "normal": "normal - socially ordinary or acceptable",
+          "expected": "expected - socially expected or encouraged"
+        }
+      },
+      {
+        "name": "letter_reversed",
+        "kind": "letter_mcq",
+        "mapping_name": "reversed_expected_normal_taboo",
+        "label_values": {
+          "taboo": "taboo - socially forbidden or unacceptable",
+          "normal": "normal - socially ordinary or acceptable",
+          "expected": "expected - socially expected or encouraged"
+        }
+      }
+    ]
+  },
+  "letter_permutation_statistics": {
+    "output_dir": "outputs/normbank/letter_permutations/statistics",
+    "n_boot": 5000,
+    "confidence": 0.95,
+    "seed": 13
+  }
+}

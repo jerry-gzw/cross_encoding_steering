@@ -1,0 +1,23 @@
+{
+  "base_config": "normbank_cross_interface_steering.example.json",
+  "output_dir": "outputs/normbank/nuisance_baselines",
+  "cross_interface": {
+    "direction_sources": [
+      "raw_pre_answer",
+      "mapping_balanced",
+      "mapping_sensitive_residual",
+      "label_only",
+      "slot_layout",
+      "random",
+      "wrong"
+    ],
+    "mapping_balance_mappings": [
+      "canonical_taboo_normal_expected",
+      "permutation_taboo_expected_normal",
+      "permutation_normal_taboo_expected",
+      "permutation_normal_expected_taboo",
+      "permutation_expected_taboo_normal",
+      "reversed_expected_normal_taboo"
+    ]
+  }
+}

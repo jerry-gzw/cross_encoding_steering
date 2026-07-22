@@ -1,0 +1,194 @@
+{
+  "output_dir": "outputs/normbank/base_mapping_audit",
+  "subspace_dim": 1,
+  "dataset": {
+    "dataset_name": "normbank",
+    "items_path": "outputs/prepared/normbank/ranked_endpoints.csv",
+    "pair_id_column": "pair_id",
+    "contrast_column": "pair_type",
+    "split_column": "direction_split",
+    "label_column": "label_name",
+    "label_ranks": {
+      "taboo": 0,
+      "normal": 1,
+      "expected": 2
+    },
+    "canonical_mapping": "canonical_taboo_normal_expected",
+    "prompt_header": "You are classifying a behavior under a social-norm context.",
+    "prompt_fields": [
+      {
+        "column": "text",
+        "prefix": "Scenario: "
+      }
+    ],
+    "question": "Question: In this context, how should the behavior be classified?",
+    "answer_instruction": "Answer with only A, B, or C.",
+    "extraction_filters": {
+      "dataset": [
+        "normbank"
+      ]
+    },
+    "train_split": "train",
+    "test_split": "test",
+    "max_train_pairs_per_contrast": 2048,
+    "max_test_pairs_per_contrast": 512
+  },
+  "mappings": [
+    {
+      "name": "canonical_taboo_normal_expected",
+      "family": "semantic_words",
+      "option_order": [
+        "taboo",
+        "normal",
+        "expected"
+      ],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "permutation_taboo_expected_normal",
+      "family": "semantic_words",
+      "option_order": [
+        "taboo",
+        "expected",
+        "normal"
+      ],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "permutation_normal_taboo_expected",
+      "family": "semantic_words",
+      "option_order": [
+        "normal",
+        "taboo",
+        "expected"
+      ],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "permutation_normal_expected_taboo",
+      "family": "semantic_words",
+      "option_order": [
+        "normal",
+        "expected",
+        "taboo"
+      ],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "permutation_expected_taboo_normal",
+      "family": "semantic_words",
+      "option_order": [
+        "expected",
+        "taboo",
+        "normal"
+      ],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "reversed_expected_normal_taboo",
+      "family": "semantic_words",
+      "option_order": [
+        "expected",
+        "normal",
+        "taboo"
+      ],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "opaque_identity",
+      "family": "opaque_codewords",
+      "option_order": [
+        "taboo",
+        "normal",
+        "expected"
+      ],
+      "header_lines": [
+        "Use this temporary key: dax means taboo, blicket means normal, and wug means expected."
+      ],
+      "option_texts": {
+        "taboo": "dax",
+        "normal": "blicket",
+        "expected": "wug"
+      }
+    },
+    {
+      "name": "opaque_permuted",
+      "family": "opaque_codewords",
+      "option_order": [
+        "expected",
+        "taboo",
+        "normal"
+      ],
+      "header_lines": [
+        "Use this temporary key: dax means taboo, blicket means normal, and wug means expected."
+      ],
+      "option_texts": {
+        "taboo": "dax",
+        "normal": "blicket",
+        "expected": "wug"
+      }
+    }
+  ],
+  "statistics": {
+    "n_boot": 10000,
+    "n_permutations": 20000,
+    "confidence": 0.95
+  },
+  "runtime": {
+    "batch_size": 2,
+    "max_length": 512,
+    "seed": 13,
+    "continue_on_error": true,
+    "force_rerun": false
+  },
+  "models": [
+    {
+      "alias": "qwen2_5_7b_instruct",
+      "name": "Qwen/Qwen2.5-7B-Instruct",
+      "locked_layer": 20,
+      "locked_alpha": 0.8
+    },
+    {
+      "alias": "llama3_1_8b_instruct",
+      "name": "meta-llama/Llama-3.1-8B-Instruct",
+      "locked_layer": 23,
+      "locked_alpha": 0.8
+    },
+    {
+      "alias": "gemma2_9b_it",
+      "name": "google/gemma-2-9b-it",
+      "locked_layer": 31,
+      "locked_alpha": 0.8
+    },
+    {
+      "alias": "mistral7b_instruct_v03",
+      "name": "mistralai/Mistral-7B-Instruct-v0.3",
+      "locked_layer": 23,
+      "locked_alpha": 0.8
+    }
+  ]
+}

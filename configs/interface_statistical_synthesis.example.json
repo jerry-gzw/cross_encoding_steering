@@ -1,0 +1,12 @@
+{
+  "cross_interface_pair_effects": "outputs/normbank/cross_interface/cross_interface_pair_effects.csv",
+  "nuisance_pair_effects": "outputs/normbank/nuisance_baselines/cross_interface_pair_effects.csv",
+  "context_pair_rows": "outputs/normbank/context_selectivity/context_discrimination_pair_rows.csv",
+  "output_dir": "outputs/interface_statistics",
+  "statistics": {
+    "n_boot": 10000,
+    "confidence": 0.95,
+    "bootstrap_chunk_size": 500,
+    "seed": 13
+  }
+}

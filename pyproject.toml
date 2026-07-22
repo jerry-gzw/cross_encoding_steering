@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cross-interface-steering-evaluation"
+version = "1.0.0"
+description = "Artifact code for cross-interface evaluation of activation-steering directions."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.23",
+  "pandas>=1.5",
+]
+
+[project.optional-dependencies]
+gpu = [
+  "torch>=2.0",
+  "transformers>=4.40",
+  "accelerate>=0.28",
+]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+cross-interface-steering = "cross_interface_steering.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,31 @@
+{
+  "output_dir": "outputs/prepared",
+  "seed": 13,
+  "datasets": [
+    {
+      "name": "normbank",
+      "adapter": "generic_contrastive",
+      "path": [
+        "datasets/NormBank.csv",
+        "datasets/normbank/train.csv",
+        "datasets/NormBank/train.csv"
+      ],
+      "format": "csv",
+      "text_fields": ["setting", "behavior", "constraints"],
+      "label_field": "norm",
+      "label_order": ["taboo", "normal", "expected"],
+      "group_fields": ["setting", "behavior"],
+      "split_field": "split",
+      "id_field": null,
+      "max_pairs_per_type_split": 2000,
+      "generated_split": {
+        "enabled": true,
+        "train": 0.8,
+        "validation": 0.1,
+        "test": 0.1,
+        "key": "pair_id"
+      },
+      "prompt_template": "Setting: {setting}\nBehavior: {behavior}\nContext: {constraints}\nQuestion: Is this behavior taboo, normal, or expected?"
+    }
+  ]
+}

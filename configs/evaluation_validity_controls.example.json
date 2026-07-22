@@ -1,0 +1,39 @@
+{
+  "base_config": "normbank_cross_interface_steering.example.json",
+  "output_dir": "outputs/validity_controls/multi_random",
+  "cross_interface": {
+    "direction_sources": ["random_ensemble"],
+    "random_control_seeds": [13, 29, 47, 71, 101],
+    "key_competence_threshold": 0.9
+  },
+  "validity_controls": {
+    "output_dir": "outputs/validity_controls",
+    "target_pair_effects": "outputs/normbank/nuisance_baselines/cross_interface_pair_effects.csv",
+    "target_context_rows": "outputs/normbank/context_selectivity/context_discrimination_pair_rows.csv",
+    "context_pair_metadata": "outputs/prepared/normbank/pairs.csv",
+    "published_caa_judgments": "outputs/published_caa/published_caa_open_ended_judgments.csv",
+    "annotation_files": [
+      "outputs/validity_controls/judge_validation_annotator_1.csv",
+      "outputs/validity_controls/judge_validation_annotator_2.csv"
+    ],
+    "target_modes": [
+      "raw_pre_answer",
+      "mapping_balanced_direction",
+      "label_only_direction"
+    ],
+    "interfaces": [
+      "letter_canonical",
+      "letter_reversed",
+      "direct_label_completion",
+      "opaque_completion"
+    ],
+    "required_multipliers": [-2.0, 0.0, 2.0],
+    "judge_sample_per_model_behavior": 10,
+    "minimum_base_gap": 0.05,
+    "statistics": {
+      "n_boot": 5000,
+      "confidence": 0.95,
+      "seed": 13
+    }
+  }
+}
