@@ -31,15 +31,52 @@
     "force_rerun": false,
     "continue_on_error": true
   },
-  "judge": {
-    "enabled": false,
-    "base_url": "https://api.openai.com/v1",
-    "model": "gpt-5.1",
-    "api_key_env": "OPENAI_API_KEY",
-    "concurrency": 4,
-    "timeout_seconds": 120,
-    "max_retries": 4
-  },
+  "judges": [
+    {
+      "alias": "gpt5_1_rubric_v3",
+      "provider": "openai_compatible",
+      "enabled": false,
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-5.1",
+      "api_key_env": "OPENAI_API_KEY",
+      "concurrency": 4,
+      "timeout_seconds": 120,
+      "max_retries": 5,
+      "include_reason": true,
+      "rubric_version": "caa_open_v3_calibrated",
+      "output_filename": "published_caa_open_ended_judgments__gpt5_1_rubric_v3.csv"
+    },
+    {
+      "alias": "claude_sonnet_4_6_rubric_v3",
+      "provider": "anthropic",
+      "enabled": false,
+      "base_url": "https://api.anthropic.com",
+      "model": "claude-sonnet-4-6",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "concurrency": 2,
+      "timeout_seconds": 180,
+      "max_retries": 5,
+      "include_reason": true,
+      "rubric_version": "caa_open_v3_calibrated",
+      "output_filename": "published_caa_open_ended_judgments__claude_sonnet_4_6_rubric_v3.csv"
+    },
+    {
+      "alias": "gemini_3_5_flash_rubric_v3_batch10",
+      "provider": "gemini",
+      "enabled": false,
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "model": "gemini-3.5-flash",
+      "api_key_env": "GEMINI_API_KEY",
+      "concurrency": 2,
+      "request_batch_size": 10,
+      "timeout_seconds": 180,
+      "max_retries": 2,
+      "include_reason": true,
+      "thinking_level": "low",
+      "rubric_version": "caa_open_v3_calibrated",
+      "output_filename": "published_caa_open_ended_judgments__gemini_3_5_flash_rubric_v3_batch10.csv"
+    }
+  ],
   "models": [
     {
       "alias": "llama2_7b_chat",

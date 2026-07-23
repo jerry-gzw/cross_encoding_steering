@@ -1,0 +1,4 @@
+judge_alias,judge_provider,judge_model,judge_rubric_version,n_rows,n_api_valid,n_reason_score_contradictions,n_usable,coverage_rate,anchor_score_rate_0_5_10,n_distinct_scores,score_entropy_bits,quality_warning
+claude_sonnet_4_6_rubric_v3,anthropic,claude-sonnet-4-6,caa_open_v3_calibrated,918,917,0,917,0.9989106753812635,0.4983642311886587,11,2.7435804025925448,incomplete_coverage
+gemini_3_5_flash_rubric_v3_batch10,gemini,gemini-3.5-flash,caa_open_v3_calibrated,918,918,0,918,1.0,0.8671023965141612,11,1.7879705403190629,anchor_score_collapse
+gpt5_1_rubric_v3,openai_compatible,gpt-5.1,caa_open_v3_calibrated,918,918,0,918,1.0,0.7799564270152506,11,2.028416130332775,

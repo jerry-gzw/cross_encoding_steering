@@ -1,0 +1,9 @@
+model_alias,model_label,behavior,n_key_queries,n_source_items,accuracy,ci_low,ci_high,target_a_accuracy,target_b_accuracy,choice_gap_b_minus_a,forward_order_accuracy,reversed_order_accuracy,all_queries_correct,scoring_protocol
+llama2_13b_chat,Llama-2-13B,all,600,150,0.7116666666666667,0.6966666666666667,0.725,0.4233333333333333,1.0,0.5766666666666667,0.9233333333333332,0.5,False,counterbalanced_letter_choice_v2
+llama2_7b_chat,Llama-2-7B,all,600,150,0.7466666666666667,0.7366666666666667,0.755,0.51,0.9833333333333332,0.4733333333333333,0.99,0.5033333333333333,False,counterbalanced_letter_choice_v2
+llama2_13b_chat,Llama-2-13B,hallucination,200,50,0.67,0.635,0.7,0.34,1.0,0.6599999999999999,0.84,0.5,False,counterbalanced_letter_choice_v2
+llama2_7b_chat,Llama-2-7B,hallucination,200,50,0.745,0.725,0.76,0.49,1.0,0.51,0.98,0.51,False,counterbalanced_letter_choice_v2
+llama2_13b_chat,Llama-2-13B,refusal,200,50,0.715,0.69,0.735,0.43,1.0,0.5700000000000001,0.93,0.5,False,counterbalanced_letter_choice_v2
+llama2_7b_chat,Llama-2-7B,refusal,200,50,0.745,0.725,0.765,0.54,0.95,0.4099999999999999,0.99,0.5,False,counterbalanced_letter_choice_v2
+llama2_13b_chat,Llama-2-13B,sycophancy,200,50,0.75,0.75,0.75,0.5,1.0,0.5,1.0,0.5,False,counterbalanced_letter_choice_v2
+llama2_7b_chat,Llama-2-7B,sycophancy,200,50,0.75,0.75,0.75,0.5,1.0,0.5,1.0,0.5,False,counterbalanced_letter_choice_v2

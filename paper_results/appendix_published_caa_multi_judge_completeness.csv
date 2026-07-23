@@ -1,0 +1,4 @@
+judge_alias,judge_provider,judge_model,n_valid_judgments,n_unique_items,n_expected_judgments,is_complete
+claude_sonnet_4_6_rubric_v3,anthropic,claude-sonnet-4-6,917,153,918,False
+gemini_3_5_flash_rubric_v3_batch10,gemini,gemini-3.5-flash,918,153,918,True
+gpt5_1_rubric_v3,openai_compatible,gpt-5.1,918,153,918,True

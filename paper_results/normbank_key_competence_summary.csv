@@ -1,0 +1,9 @@
+model_alias,model_name,interface,n_items,accuracy,mean_target_margin,min_target_margin,n_target_labels,threshold,competence_passed
+gemma2_9b_it,google/gemma-2-9b-it,opaque_completion,9,0.8888888888888888,3.730382283528646,-0.86328125,3,0.9,False
+gemma2_9b_it,google/gemma-2-9b-it,ordinal_completion,9,1.0,3.2548828125,1.310546875,3,0.9,True
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,opaque_completion,9,0.8888888888888888,1.0215928786330752,-0.0690104067325592,3,0.9,False
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,ordinal_completion,9,0.8888888888888888,1.2348090277777777,-0.1328125,3,0.9,False
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,opaque_completion,9,0.7777777777777778,2.2409549487961664,-1.1793619394302368,3,0.9,False
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,ordinal_completion,9,1.0,1.9592013888888888,0.8017578125,3,0.9,True
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,opaque_completion,9,1.0,4.143197456995647,3.3325626850128174,3,0.9,True
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,ordinal_completion,9,1.0,5.083026144239637,3.311534881591797,3,0.9,True

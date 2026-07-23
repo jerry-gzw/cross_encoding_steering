@@ -6,15 +6,18 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import cross_interface_steering.published_caa_audit as published_caa_audit
 
 from cross_interface_steering.published_caa_audit import (
     CAAJudgeConfig,
     PublishedCAAAuditConfig,
     _collect_multi_judge_tables,
+    _gemini_batch_json_schema,
+    _gemini_batch_judge_request,
+    _gemini_batch_prompt,
+    _reason_score_contradiction,
+    _judge_json_schema,
     _judge_prompt,
-    _judge_request_spec,
-    _judge_response_content,
-    _judge_usage,
     _read_csv_if_nonempty,
     aggregate_published_caa_audit,
     _interface_record,
@@ -26,53 +29,63 @@ from cross_interface_steering.published_caa_audit import (
 )
 
 
-def test_provider_native_judge_requests(monkeypatch) -> None:
-    row = {
-        "behavior": "hallucination",
-        "question": "Is the false claim true?",
-        "response": "Yes, definitely.",
-    }
-    monkeypatch.setenv("DEEPSEEK_API_KEY", "deepseek-key")
-    deepseek = CAAJudgeConfig(
-        alias="deepseek_v4_pro",
-        provider="openai_compatible",
-        enabled=True,
-        base_url="https://api.deepseek.com",
-        model="deepseek-v4-pro",
-        api_key_env="DEEPSEEK_API_KEY",
+def test_gemini_batch_schema_and_response_are_item_aligned(monkeypatch) -> None:
+    judge = CAAJudgeConfig(
+        alias="gemini",
+        provider="gemini",
+        model="gemini-test",
+        include_reason=True,
+        request_batch_size=2,
     )
-    url, headers, payload = _judge_request_spec(deepseek, row)
-    assert url == "https://api.deepseek.com/chat/completions"
-    assert headers["Authorization"] == "Bearer deepseek-key"
-    assert payload["thinking"] == {"type": "disabled"}
-    assert payload["response_format"] == {"type": "json_object"}
+    rows = [
+        {"behavior": "refusal", "question": "Question one", "response": "Answer one"},
+        {
+            "behavior": "hallucination",
+            "question": "Question two",
+            "response": "Answer two",
+        },
+    ]
+    schema = _gemini_batch_json_schema(True)
+    assert schema["type"] == "array"
+    assert schema["items"]["required"] == ["request_id", "reason", "score"]
+    prompt = _gemini_batch_prompt(judge, rows)
+    assert '"request_id": 0' in prompt and '"request_id": 1' in prompt
 
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "anthropic-key")
-    claude = CAAJudgeConfig(
-        alias="claude_sonnet_4_5_rubric_v2",
-        provider="anthropic",
-        enabled=True,
-        base_url="https://api.anthropic.com",
-        model="claude-sonnet-4-5-20250929",
-        api_key_env="ANTHROPIC_API_KEY",
-    )
-    url, headers, payload = _judge_request_spec(claude, row)
-    assert url == "https://api.anthropic.com/v1/messages"
-    assert headers["x-api-key"] == "anthropic-key"
-    assert headers["anthropic-version"] == "2023-06-01"
-    assert payload["model"] == "claude-sonnet-4-5-20250929"
-    schema = payload["output_config"]["format"]["schema"]
-    assert schema["properties"]["score"]["type"] == "integer"
-    assert schema["required"] == ["score", "reason"]
+    def fake_call(client, config, batch):
+        assert batch == rows
+        return (
+            json.dumps(
+                [
+                    {"request_id": 0, "reason": "First", "score": 2},
+                    {"request_id": 1, "reason": "Second", "score": 8},
+                ]
+            ),
+            {
+                "judge_prompt_tokens": 100,
+                "judge_completion_tokens": 20,
+                "judge_reasoning_tokens": 10,
+                "judge_total_tokens": 130,
+                "judge_response_model": "gemini-test",
+                "judge_system_fingerprint": "",
+            },
+        )
 
-    response = {
-        "model": "claude-sonnet-4-5-20250929",
-        "content": [{"type": "text", "text": '{"score": 9, "reason": "Fabricated."}'}],
-        "usage": {"input_tokens": 100, "output_tokens": 20},
-    }
-    assert _judge_response_content(claude, response).startswith('{"score": 9')
-    usage = _judge_usage(claude, response)
-    assert usage["judge_total_tokens"] == 120
+    monkeypatch.setattr(published_caa_audit, "_gemini_batch_judge_call", fake_call)
+    results = _gemini_batch_judge_request(object(), judge, rows)
+    assert [result["judge_score"] for result in results] == [2.0, 8.0]
+    assert all(result["judge_batch_size"] == 2 for result in results)
+    assert sum(result["judge_total_tokens"] for result in results) == 130
+
+
+def test_provider_specific_judge_schemas() -> None:
+    generic = _judge_json_schema(True)
+    assert generic["properties"]["score"]["minimum"] == 0
+    assert generic["properties"]["score"]["maximum"] == 10
+    anthropic = _judge_json_schema(True, provider="anthropic")
+    assert anthropic["properties"]["score"]["type"] == "integer"
+    assert "minimum" not in anthropic["properties"]["score"]
+    assert "maximum" not in anthropic["properties"]["score"]
+    assert anthropic["required"] == ["reason", "score"]
 
 
 def test_anchored_judge_prompt_uses_full_scale_without_zero_example() -> None:
@@ -88,7 +101,14 @@ def test_anchored_judge_prompt_uses_full_scale_without_zero_example() -> None:
     assert "0:" in prompt and "5:" in prompt and "10:" in prompt
     assert "not by itself a refusal" in prompt
     assert '{"score": 0' not in prompt
-    assert "caa_open_v2_anchored" in prompt
+    assert "caa_open_v3_calibrated" in prompt
+    assert prompt.index('field "reason"') < prompt.index('field "score"')
+
+
+def test_reason_score_contradiction_catches_explicit_mismatch() -> None:
+    reason = "The response rejects the false premise. Therefore, the correct score is 0."
+    assert _reason_score_contradiction(10, reason)
+    assert not _reason_score_contradiction(0, reason)
 
 
 def test_multi_judge_aggregation_builds_consensus_and_leave_one_out(tmp_path: Path) -> None:
@@ -162,7 +182,7 @@ def test_configured_multi_judge_aggregation_ignores_historical_files(tmp_path: P
                     "multiplier": multiplier,
                     "judge_score": 5.0 + multiplier,
                     "judge_error": "",
-                    "judge_rubric_version": "caa_open_v2_anchored",
+                    "judge_rubric_version": "caa_open_v3_calibrated",
                 }
             )
     for judge in judges:
@@ -180,6 +200,9 @@ def test_configured_multi_judge_aggregation_ignores_historical_files(tmp_path: P
     tables = _collect_multi_judge_tables(config)
     aliases = set(tables["published_caa_multi_judge_scores"]["judge_alias"])
     assert aliases == {judge.alias for judge in judges}
+    quality = tables["published_caa_multi_judge_quality"]
+    assert set(quality["judge_alias"]) == {judge.alias for judge in judges}
+    assert quality["coverage_rate"].eq(1.0).all()
     consensus = tables["published_caa_multi_judge_effects"]
     consensus = consensus[consensus["judge_alias"].eq("median_consensus")]
     assert len(consensus) == len(rows)

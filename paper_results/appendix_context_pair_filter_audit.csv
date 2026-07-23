@@ -1,0 +1,2 @@
+scope,n_input_pairs,n_excluded_identical_text_pairs,n_retained_pairs,n_retained_setting_behavior_clusters,cluster_key,exclusion_rule
+rq2_matched_context_diagnostic,1536,4,1532,1392,setting_plus_behavior_group_key,normalized rendered negative_text equals positive_text

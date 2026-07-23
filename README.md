@@ -48,6 +48,12 @@ source .venv/bin/activate
 pip install -e ".[gpu]"
 ```
 
+To reproduce the optional API-based open-ended judging:
+
+```bash
+pip install -e ".[gpu,judges]"
+```
+
 CPU-only data preparation and statistical aggregation require only the base
 dependencies:
 
@@ -57,6 +63,14 @@ pip install -e .
 
 The scripts infer the repository root automatically. Set `NDD_PROJECT_ROOT`
 only when `datasets/` and `outputs/` should live under another directory.
+
+### Reference computing environment
+
+The reported experiments were run on Ubuntu 22.04.5 LTS with CUDA 12.2,
+Python 3.11.7, PyTorch 2.7.0, and Transformers 4.52.4. The server had two
+NVIDIA A100-PCIE-40GB GPUs, an AMD EPYC 7702P 64-Core CPU, and 503 GB RAM.
+GPU visibility is controlled by the caller through `CUDA_VISIBLE_DEVICES`;
+the scripts do not contain fixed GPU IDs.
 
 ## Data
 
@@ -163,13 +177,26 @@ CUDA_VISIBLE_DEVICES=1 NDD_CAA_PHASE=run \
 NDD_CAA_PHASE=aggregate bash scripts/run_published_caa_audit.sh
 ```
 
-Open-ended judging is disabled in the example config. Enable its `judge`
-section in a local config, set the configured API-key environment variable,
-and run:
+Open-ended judging is disabled in the example config to prevent accidental API
+charges. Copy the config, enable the desired entries in `judges`, and set the
+corresponding `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY`.
+The paper uses GPT-5.1, Claude Sonnet 4.6, and Gemini 3.5 Flash under the same
+calibrated 0--10 rubric. Each judge is independently resumable:
 
 ```bash
 NDD_CAA_CONFIG=/path/to/local_caa_config.json \
+NDD_CAA_JUDGES=gpt5_1_rubric_v3 \
 NDD_CAA_PHASE=judge bash scripts/run_published_caa_audit.sh
+
+NDD_CAA_CONFIG=/path/to/local_caa_config.json \
+NDD_CAA_JUDGES=claude_sonnet_4_6_rubric_v3 \
+NDD_CAA_PHASE=judge bash scripts/run_published_caa_audit.sh
+
+NDD_CAA_CONFIG=/path/to/local_caa_config.json \
+NDD_CAA_JUDGES=gemini_3_5_flash_rubric_v3_batch10 \
+NDD_CAA_PHASE=judge bash scripts/run_published_caa_audit.sh
+
+NDD_CAA_CONFIG=/path/to/local_caa_config.json \
 NDD_CAA_PHASE=aggregate bash scripts/run_published_caa_audit.sh
 ```
 
@@ -197,6 +224,14 @@ NDD_VALIDITY_PHASE=summarize bash scripts/run_validity_controls.sh
 All GPU runners are resumable at the model directory level unless
 `force_rerun` is enabled in the corresponding configuration.
 
+## Released paper results
+
+`paper_results/` contains the compact machine-readable summaries used for the
+main tables, figures, and direct supplementary controls. These files are
+included for result verification; the commands above regenerate their upstream
+outputs from the public datasets and model checkpoints. See
+`paper_results/README.md` for the evidence-to-file map.
+
 ## Tests
 
 ```bash
@@ -207,3 +242,7 @@ pytest -q
 The tests exercise prompt/interface construction, current-label versus
 source-slot accounting, permutation statistics, CAA aggregation, validity
 controls, and last-token indexing without downloading a model.
+
+## License
+
+This code is released under the MIT License. See `LICENSE`.

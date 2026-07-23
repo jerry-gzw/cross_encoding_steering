@@ -1,0 +1,4 @@
+judge_left,judge_right,n_shared_items,pearson_r,spearman_rho,mean_absolute_difference,within_one_point_rate
+claude_sonnet_4_6_rubric_v3,gemini_3_5_flash_rubric_v3_batch10,917,0.9431731003195932,0.829098109303131,0.787350054525627,0.8353326063249727
+claude_sonnet_4_6_rubric_v3,gpt5_1_rubric_v3,917,0.8862631051205848,0.8012601004795732,0.9912758996728462,0.8026172300981461
+gemini_3_5_flash_rubric_v3_batch10,gpt5_1_rubric_v3,918,0.8879445987162199,0.8197277822477511,0.7494553376906318,0.8627450980392157

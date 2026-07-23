@@ -1,0 +1,2 @@
+n_models,n_contrasts,n_model_contrast_cells,n_mapping_extractions_per_cell_min,n_mapping_extractions_per_cell_max,retention_ratio_min,retention_ratio_mean,retention_ratio_median,retention_ratio_max,rescale_factor_min,rescale_factor_max,max_norm_match_absolute_error
+4,3,12,6,6,0.6521085700264234,0.7481956924079781,0.7629456431505686,0.7965013552175694,1.250171896171693,1.4720458745829057,3.814697272730427e-06
