@@ -107,6 +107,7 @@ def apply_generated_split(
     validation_cut = (train_ratio + validation_ratio) / total
     key_column = str(split_spec.get("key", "pair_id"))
     include_pair_type = bool(split_spec.get("include_pair_type", True))
+    enforce_item_disjoint = bool(split_spec.get("enforce_item_disjoint", False))
     if key_column not in pairs.columns:
         raise KeyError(f"generated_split key column {key_column!r} not found in pairs")
 
@@ -127,12 +128,40 @@ def apply_generated_split(
     out_pairs["source_split"] = old_split.astype(str).to_numpy()
     out_pairs["split"] = new_splits
 
+    endpoint_assignments = []
+    for column in ["negative_item_id", "positive_item_id"]:
+        if column not in out_pairs.columns:
+            continue
+        endpoint_assignments.append(
+            out_pairs[[column, "split"]]
+            .rename(columns={column: "item_id"})
+            .assign(item_id=lambda frame: frame["item_id"].astype(str))
+        )
+    endpoint_splits = (
+        pd.concat(endpoint_assignments, ignore_index=True).drop_duplicates()
+        if endpoint_assignments
+        else pd.DataFrame(columns=["item_id", "split"])
+    )
+    if enforce_item_disjoint and not endpoint_splits.empty:
+        conflicts = (
+            endpoint_splits.groupby("item_id", as_index=False)
+            .agg(
+                n_splits=("split", "nunique"),
+                splits=("split", lambda values: ",".join(sorted(set(values)))),
+            )
+        )
+        conflicts = conflicts[conflicts["n_splits"].gt(1)]
+        if not conflicts.empty:
+            examples = conflicts.head(5).to_dict("records")
+            raise ValueError(
+                "generated_split produced endpoint leakage across splits; "
+                f"examples: {examples}"
+            )
+
     out_items = items.copy()
-    item_split: dict[str, str] = {}
-    for _, row in out_pairs.iterrows():
-        for column in ["negative_item_id", "positive_item_id"]:
-            if column in row:
-                item_split[str(row[column])] = str(row["split"])
+    item_split = dict(
+        endpoint_splits[["item_id", "split"]].itertuples(index=False, name=None)
+    )
     if "item_id" in out_items.columns and item_split:
         out_items["source_split"] = out_items["split"].astype(str) if "split" in out_items.columns else ""
         out_items["split"] = out_items["item_id"].astype(str).map(item_split).fillna(out_items.get("split", ""))
@@ -144,10 +173,125 @@ def apply_generated_split(
     )
     inventory["split_source"] = "generated"
     inventory["split_key"] = key_column
+    inventory["include_pair_type_in_split_key"] = include_pair_type
+    inventory["enforce_item_disjoint"] = enforce_item_disjoint
     inventory["train_ratio"] = train_ratio
     inventory["validation_ratio"] = validation_ratio
     inventory["test_ratio"] = test_ratio
     return out_items, out_pairs, inventory
+
+
+def audit_split_isolation(
+    pairs: pd.DataFrame,
+    *,
+    group_column: str = "group_key",
+) -> dict[str, pd.DataFrame]:
+    """Report whether pair, context-group, and endpoint identities cross splits."""
+    required = {
+        "pair_id",
+        "split",
+        "negative_item_id",
+        "positive_item_id",
+    }
+    missing = sorted(required - set(pairs.columns))
+    if missing:
+        raise ValueError(f"Cannot audit split isolation; missing columns: {missing}")
+    if group_column not in pairs.columns:
+        raise ValueError(f"Cannot audit split isolation; missing group column {group_column!r}")
+
+    assignments = {
+        "pair_id": pairs[["pair_id", "split"]]
+        .rename(columns={"pair_id": "identity"})
+        .assign(identity=lambda frame: frame["identity"].astype(str))
+        .drop_duplicates(),
+        "context_group": pairs[[group_column, "split"]]
+        .rename(columns={group_column: "identity"})
+        .assign(identity=lambda frame: frame["identity"].astype(str))
+        .drop_duplicates(),
+        "endpoint": pd.concat(
+            [
+                pairs[[column, "split"]].rename(columns={column: "identity"})
+                for column in ["negative_item_id", "positive_item_id"]
+            ],
+            ignore_index=True,
+        )
+        .assign(identity=lambda frame: frame["identity"].astype(str))
+        .drop_duplicates(),
+    }
+    split_names = sorted(pairs["split"].astype(str).unique())
+    overlap_rows = []
+    for identity_type, frame in assignments.items():
+        by_split = {
+            split: set(frame.loc[frame["split"].astype(str).eq(split), "identity"])
+            for split in split_names
+        }
+        for left, right in combinations(split_names, 2):
+            overlap = by_split[left] & by_split[right]
+            denominator = min(len(by_split[left]), len(by_split[right]))
+            overlap_rows.append(
+                {
+                    "identity_type": identity_type,
+                    "left_split": left,
+                    "right_split": right,
+                    "n_left": len(by_split[left]),
+                    "n_right": len(by_split[right]),
+                    "n_overlap": len(overlap),
+                    "overlap_rate_min_side": len(overlap) / denominator if denominator else 0.0,
+                    "overlap_examples": ";".join(sorted(overlap)[:5]),
+                }
+            )
+    overlap = pd.DataFrame(overlap_rows)
+
+    inventory_rows = []
+    for split in split_names:
+        split_pairs = pairs[pairs["split"].astype(str).eq(split)]
+        endpoint_ids = pd.concat(
+            [
+                split_pairs["negative_item_id"].astype(str),
+                split_pairs["positive_item_id"].astype(str),
+            ],
+            ignore_index=True,
+        )
+        inventory_rows.append(
+            {
+                "split": split,
+                "n_pairs": int(split_pairs["pair_id"].nunique()),
+                "n_context_groups": int(split_pairs[group_column].astype(str).nunique()),
+                "n_endpoints": int(endpoint_ids.nunique()),
+                "n_contrasts": int(split_pairs["pair_type"].nunique())
+                if "pair_type" in split_pairs
+                else 0,
+            }
+        )
+    inventory = pd.DataFrame(inventory_rows)
+    max_overlap = (
+        overlap.groupby("identity_type")["n_overlap"].max().to_dict()
+        if not overlap.empty
+        else {}
+    )
+    summary = pd.DataFrame(
+        [
+            {
+                "group_column": group_column,
+                "n_splits": len(split_names),
+                "pair_id_overlap": int(max_overlap.get("pair_id", 0)),
+                "context_group_overlap": int(max_overlap.get("context_group", 0)),
+                "endpoint_overlap": int(max_overlap.get("endpoint", 0)),
+                "pair_id_disjoint": int(max_overlap.get("pair_id", 0)) == 0,
+                "context_group_disjoint": int(max_overlap.get("context_group", 0)) == 0,
+                "endpoint_disjoint": int(max_overlap.get("endpoint", 0)) == 0,
+                "strict_split_isolation_pass": all(
+                    int(max_overlap.get(kind, 0)) == 0
+                    for kind in ["pair_id", "context_group", "endpoint"]
+                ),
+            }
+        ]
+    )
+    return {
+        "split_isolation_summary": summary,
+        "split_overlap_audit": overlap,
+        "split_assignment_inventory": inventory,
+    }
 
 
 def build_grouped_label_pairs(

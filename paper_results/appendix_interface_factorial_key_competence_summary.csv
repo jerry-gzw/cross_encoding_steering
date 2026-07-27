@@ -1,0 +1,13 @@
+model_alias,identifier_set,n_mapping_cells,n_passed,mean_key_accuracy,min_key_accuracy,min_target_margin,pass_rate
+gemma2_9b_it,letters_abc,6,6,1.0,1.0,4.9287109375,1.0
+gemma2_9b_it,letters_xyz,6,6,1.0,1.0,6.1875,1.0
+gemma2_9b_it,numbers_123,6,6,1.0,1.0,2.7861328125,1.0
+llama3_1_8b_instruct,letters_abc,6,4,0.9629629629629628,0.8888888888888888,-1.125,0.6666666666666666
+llama3_1_8b_instruct,letters_xyz,6,2,0.8888888888888888,0.7777777777777778,-1.0,0.3333333333333333
+llama3_1_8b_instruct,numbers_123,6,6,1.0,1.0,0.5625,1.0
+mistral7b_instruct_v03,letters_abc,6,5,0.9629629629629628,0.7777777777777778,-2.251953125,0.8333333333333334
+mistral7b_instruct_v03,letters_xyz,6,3,0.9074074074074074,0.7777777777777778,-1.37890625,0.5
+mistral7b_instruct_v03,numbers_123,6,6,1.0,1.0,0.416015625,1.0
+qwen2_5_7b_instruct,letters_abc,6,6,1.0,1.0,0.751953125,1.0
+qwen2_5_7b_instruct,letters_xyz,6,6,1.0,1.0,0.375,1.0
+qwen2_5_7b_instruct,numbers_123,6,6,1.0,1.0,2.8731765747070312,1.0

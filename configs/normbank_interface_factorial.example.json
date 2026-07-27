@@ -1,0 +1,43 @@
+{
+  "base_config": "normbank_group_disjoint_letter_permutation.example.json",
+  "output_dir": "outputs/normbank/interface_factorial",
+  "interface_factorial": {
+    "competence_threshold": 0.8,
+    "mapping_names": [
+      "canonical_taboo_normal_expected",
+      "permutation_taboo_expected_normal",
+      "permutation_normal_taboo_expected",
+      "permutation_normal_expected_taboo",
+      "permutation_expected_taboo_normal",
+      "reversed_expected_normal_taboo"
+    ],
+    "identifier_sets": [
+      {
+        "name": "letters_abc",
+        "values": ["A", "B", "C"]
+      },
+      {
+        "name": "letters_xyz",
+        "values": ["X", "Y", "Z"]
+      },
+      {
+        "name": "numbers_123",
+        "values": ["1", "2", "3"]
+      }
+    ],
+    "templates": [
+      {
+        "name": "primary",
+        "question": "Question: In this context, how should the behavior be classified?",
+        "answer_instruction": "Use the answer key shown below."
+      }
+    ]
+  },
+  "runtime": {
+    "batch_size": 2,
+    "max_length": 512,
+    "seed": 13,
+    "continue_on_error": true,
+    "force_rerun": false
+  }
+}

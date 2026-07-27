@@ -1,0 +1,29 @@
+{
+  "output_dir": "outputs/prepared/sc101",
+  "seed": 13,
+  "datasets": [
+    {
+      "name": "social_chemistry_101",
+      "adapter": "social_chemistry_101",
+      "path": [
+        "datasets/social-chem-101.v1.0.tsv",
+        "datasets/social-chem-101/social-chem-101.v1.0.tsv"
+      ],
+      "format": "tsv",
+      "include_splits": ["train", "dev", "test"],
+      "max_pairs_per_type_split": 2000,
+      "metadata": {
+        "prompt_variant": "action_only",
+        "social_norms_only": true
+      },
+      "generated_split": {
+        "enabled": true,
+        "train": 0.8,
+        "validation": 0.1,
+        "test": 0.1,
+        "key": "pair_id"
+      },
+      "prompt_template": "Action: {sc101_text}\nQuestion: Is this action bad, ok, or good?"
+    }
+  ]
+}

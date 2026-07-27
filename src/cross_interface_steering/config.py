@@ -28,6 +28,7 @@ class DatasetConfig:
     max_pairs_per_type_split: int = 2000
     include_splits: list[str] = field(default_factory=list)
     generated_split: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> "DatasetConfig":

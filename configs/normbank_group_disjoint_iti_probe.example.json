@@ -1,0 +1,23 @@
+{
+  "base_config": "normbank_group_disjoint_letter_permutation.example.json",
+  "output_dir": "outputs/normbank/iti_probe_intervention",
+  "dataset": {
+    "max_train_pairs_per_contrast": 1024,
+    "max_validation_pairs_per_contrast": 256,
+    "max_test_pairs_per_contrast": 512
+  },
+  "iti_probe": {
+    "direction_method": "mass_mean_shift",
+    "candidate_layer_fractions": [0.5, 0.625, 0.75, 0.875],
+    "top_k_heads_grid": [8, 16, 32, 48],
+    "alpha_grid": [5.0, 10.0, 15.0, 20.0],
+    "ridge": 0.01,
+    "random_control_seeds": [13, 29, 47, 71, 101],
+    "selection_template": "classify",
+    "minimum_validation_gain": 0.0,
+    "n_boot": 5000,
+    "confidence": 0.95,
+    "seed": 13,
+    "comparison_caa_bootstrap_path": "outputs/normbank/group_disjoint_letter_permutations/statistics/letter_permutation_bootstrap_ci.csv"
+  }
+}

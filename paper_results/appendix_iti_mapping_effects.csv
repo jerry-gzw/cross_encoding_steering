@@ -1,0 +1,19 @@
+metric,interface,n_models,n_contrasts,n_model_contrast_strata,n_pairs,mean_adjusted_gain,ci_low,ci_high,positive_strata,negative_strata,confidence,n_boot,interface_label,metric_label
+current_label_margin,letter_canonical,3,3,9,1536,7.540399740791569,7.500412519194306,7.581160213174643,9,0,0.95,5000,T/N/E (source),Current label
+current_label_margin,letter_permutation_expected_taboo_normal,3,3,9,1536,-2.185768117779797,-2.2217306685842644,-2.14948796521674,2,7,0.95,5000,E/T/N,Current label
+current_label_margin,letter_permutation_normal_expected_taboo,3,3,9,1536,-3.050575845938659,-3.0929960975404915,-3.007164836008386,4,5,0.95,5000,N/E/T,Current label
+current_label_margin,letter_permutation_normal_taboo_expected,3,3,9,1536,0.1362087672024415,0.0985209979620086,0.1748397349775766,5,4,0.95,5000,N/T/E,Current label
+current_label_margin,letter_permutation_taboo_expected_normal,3,3,9,1536,1.7137459289282562,1.675801211902182,1.7513601846832576,6,3,0.95,5000,T/E/N,Current label
+current_label_margin,letter_reversed,3,3,9,1536,-0.5594858425721113,-0.5991058293303595,-0.5186638493002046,5,4,0.95,5000,E/N/T,Current label
+extraction_slot_margin,letter_canonical,3,3,9,1536,7.540399740791569,7.498903885688718,7.581108782951357,9,0,0.95,5000,T/N/E (source),Extraction ID
+extraction_slot_margin,letter_permutation_expected_taboo_normal,3,3,9,1536,6.257618374270559,6.2187251910547445,6.294598863888704,8,1,0.95,5000,E/T/N,Extraction ID
+extraction_slot_margin,letter_permutation_normal_expected_taboo,3,3,9,1536,6.280419564283349,6.238118775487852,6.322056623125682,8,1,0.95,5000,N/E/T,Extraction ID
+extraction_slot_margin,letter_permutation_normal_taboo_expected,3,3,9,1536,6.266840383789881,6.230956872081195,6.302408267725086,8,1,0.95,5000,N/T/E,Extraction ID
+extraction_slot_margin,letter_permutation_taboo_expected_normal,3,3,9,1536,7.340249421557893,7.298329797475943,7.381020466208769,9,0,0.95,5000,T/E/N,Extraction ID
+extraction_slot_margin,letter_reversed,3,3,9,1536,6.353739882836602,6.312792623278132,6.39304269623132,7,2,0.95,5000,E/N/T,Extraction ID
+current_label_minus_extraction_slot,letter_canonical,3,3,9,1536,0.0,0.0,0.0,0,0,0.95,5000,T/N/E (source),Current - ID
+current_label_minus_extraction_slot,letter_permutation_expected_taboo_normal,3,3,9,1536,-8.443386492050358,-8.51279758654069,-8.373945959587578,1,8,0.95,5000,E/T/N,Current - ID
+current_label_minus_extraction_slot,letter_permutation_normal_expected_taboo,3,3,9,1536,-9.330995410222007,-9.403508226111605,-9.25651430868074,2,7,0.95,5000,N/E/T,Current - ID
+current_label_minus_extraction_slot,letter_permutation_normal_taboo_expected,3,3,9,1536,-6.13063161658744,-6.1890454771183,-6.073305936056853,1,8,0.95,5000,N/T/E,Current - ID
+current_label_minus_extraction_slot,letter_permutation_taboo_expected_normal,3,3,9,1536,-5.626503492629638,-5.675067516757968,-5.578316762656215,4,5,0.95,5000,T/E/N,Current - ID
+current_label_minus_extraction_slot,letter_reversed,3,3,9,1536,-6.913225725408712,-6.981415632591513,-6.8450757950985865,1,8,0.95,5000,E/N/T,Current - ID

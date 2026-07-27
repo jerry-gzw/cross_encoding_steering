@@ -1,0 +1,14 @@
+{
+  "base_config": "normbank_letter_permutation_audit.example.json",
+  "output_dir": "outputs/normbank/group_disjoint_letter_permutations",
+  "dataset": {
+    "items_path": "outputs/prepared/normbank_group_disjoint/ranked_endpoints.csv",
+    "validation_split": "validation"
+  },
+  "letter_permutation_statistics": {
+    "output_dir": "outputs/normbank/group_disjoint_letter_permutations/statistics",
+    "n_boot": 5000,
+    "confidence": 0.95,
+    "seed": 13
+  }
+}

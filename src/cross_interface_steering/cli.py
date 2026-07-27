@@ -9,13 +9,18 @@ import pandas as pd
 from .config import ExperimentConfig
 from .context_discrimination import run_context_discrimination_from_json
 from .cross_interface_audit import run_cross_interface_audit_from_json
-from .data import build_normbank_pairs, discover_dataset
+from .data import build_normbank_pairs, build_sc101_pairs, discover_dataset
 from .endpoints import build_ranked_endpoints_from_csv
+from .interface_factorial_audit import (
+    run_interface_factorial_audit_from_json,
+    summarize_interface_factorial_statistics,
+)
 from .interface_statistics import run_interface_statistics_from_json
 from .io import write_tables
+from .iti_probe_audit import run_iti_probe_audit_from_json
 from .letter_permutation_audit import run_letter_permutation_audit_from_json
 from .mnli_control import run_mnli_control_from_json, run_mnli_statistics_from_json
-from .pairs import summarize_pairs
+from .pairs import audit_split_isolation, summarize_pairs
 from .published_caa_audit import run_published_caa_audit_from_json
 from .validity_controls import run_evaluation_validity_controls_from_json
 
@@ -49,10 +54,32 @@ def cmd_prepare_normbank(args: argparse.Namespace) -> None:
     items, pairs, metadata = build_normbank_pairs(dataset, config.project_root, seed=config.seed)
     tables = {"items": items, "pairs": pairs, "dataset_metadata": metadata}
     tables.update(summarize_pairs(pairs))
+    if "group_key" in pairs.columns:
+        tables.update(audit_split_isolation(pairs))
     write_tables(tables, output_dir)
     endpoints = build_ranked_endpoints_from_csv(output_dir / "pairs.csv", output_dir)
     print(endpoints["ranked_endpoint_inventory"].to_string(index=False))
     print(f"Prepared NormBank pairs and endpoints in {output_dir}")
+
+
+def cmd_prepare_sc101(args: argparse.Namespace) -> None:
+    config = ExperimentConfig.from_json(args.config, project_root=args.project_root)
+    dataset = config.dataset("social_chemistry_101")
+    output_dir = Path(args.output_dir).expanduser()
+    if not output_dir.is_absolute():
+        output_dir = config.project_root / output_dir
+    output_dir = output_dir.resolve()
+    items, pairs, metadata = build_sc101_pairs(
+        dataset,
+        config.project_root,
+        seed=config.seed,
+    )
+    tables = {"items": items, "pairs": pairs, "dataset_metadata": metadata}
+    tables.update(summarize_pairs(pairs))
+    write_tables(tables, output_dir)
+    endpoints = build_ranked_endpoints_from_csv(output_dir / "pairs.csv", output_dir)
+    print(endpoints["ranked_endpoint_inventory"].to_string(index=False))
+    print(f"Prepared SC101 action-only pairs and endpoints in {output_dir}")
 
 
 def cmd_check_data(args: argparse.Namespace) -> None:
@@ -111,6 +138,44 @@ def cmd_interface_statistics(args: argparse.Namespace) -> None:
     print(tables.get("nuisance_mode_global_bootstrap_ci", pd.DataFrame()).to_string(index=False))
 
 
+def cmd_interface_factorial(args: argparse.Namespace) -> None:
+    tables = run_interface_factorial_audit_from_json(
+        args.config,
+        project_root=args.project_root,
+        model_source_overrides=_model_source_overrides(args.model_source_overrides),
+        model_aliases=_aliases(args.models),
+        phase=args.phase,
+    )
+    print(tables.get("factorial_condition_summary", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_interface_factorial_statistics(args: argparse.Namespace) -> None:
+    tables = summarize_interface_factorial_statistics(
+        args.config,
+        project_root=args.project_root,
+    )
+    print(tables.get("factorial_paper_model_summary", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_iti_probe(args: argparse.Namespace) -> None:
+    tables = run_iti_probe_audit_from_json(
+        args.config,
+        project_root=args.project_root,
+        model_source_overrides=_model_source_overrides(args.model_source_overrides),
+        model_aliases=_aliases(args.models),
+        phase=args.phase,
+    )
+    for key in (
+        "iti_cross_method_decision",
+        "iti_probe_competence_summary",
+        "iti_probe_selection",
+    ):
+        frame = tables.get(key, pd.DataFrame())
+        if not frame.empty:
+            print(frame.to_string(index=False))
+            break
+
+
 def cmd_published_caa(args: argparse.Namespace) -> None:
     tables = run_published_caa_audit_from_json(
         args.config,
@@ -164,6 +229,11 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--output-dir", required=True)
     command.set_defaults(func=cmd_prepare_normbank)
 
+    command = sub.add_parser("prepare-sc101")
+    config_flags(command)
+    command.add_argument("--output-dir", required=True)
+    command.set_defaults(func=cmd_prepare_sc101)
+
     command = sub.add_parser("run-cross-interface")
     config_flags(command, models=True)
     command.add_argument("--inventory-only", action="store_true")
@@ -189,6 +259,24 @@ def build_parser() -> argparse.ArgumentParser:
     command = sub.add_parser("summarize-interface-controls")
     config_flags(command)
     command.set_defaults(func=cmd_interface_statistics)
+
+    command = sub.add_parser("run-interface-factorial")
+    config_flags(command, models=True)
+    command.add_argument("--phase", choices=["run", "aggregate", "all"], default="all")
+    command.set_defaults(func=cmd_interface_factorial)
+
+    command = sub.add_parser("summarize-interface-factorial")
+    config_flags(command)
+    command.set_defaults(func=cmd_interface_factorial_statistics)
+
+    command = sub.add_parser("run-iti-probe")
+    config_flags(command, models=True)
+    command.add_argument(
+        "--phase",
+        choices=["run", "aggregate", "summarize", "all"],
+        default="all",
+    )
+    command.set_defaults(func=cmd_iti_probe)
 
     command = sub.add_parser("run-published-caa")
     config_flags(command, models=True)

@@ -1,0 +1,218 @@
+{
+  "output_dir": "outputs/sc101/letter_permutations",
+  "subspace_dim": 1,
+  "dataset": {
+    "dataset_name": "social_chemistry_101_action_only",
+    "items_path": "outputs/prepared/sc101/ranked_endpoints.csv",
+    "pair_id_column": "pair_id",
+    "contrast_column": "pair_type",
+    "split_column": "direction_split",
+    "label_column": "label_name",
+    "label_ranks": {
+      "bad": 0,
+      "ok": 1,
+      "good": 2
+    },
+    "canonical_mapping": "canonical_bad_ok_good",
+    "prompt_header": "You are judging a social norm.",
+    "prompt_fields": [
+      {
+        "column": "text",
+        "prefix": "Action: "
+      }
+    ],
+    "question": "Question: Is this action bad, ok, or good?",
+    "answer_instruction": "Answer with only A, B, or C.",
+    "extraction_filters": {
+      "dataset": ["social_chemistry_101"]
+    },
+    "train_split": "train",
+    "validation_split": "validation",
+    "test_split": "test",
+    "max_train_pairs_per_contrast": 2048,
+    "max_validation_pairs_per_contrast": 256,
+    "max_test_pairs_per_contrast": 256
+  },
+  "mappings": [
+    {
+      "name": "canonical_bad_ok_good",
+      "family": "semantic_words",
+      "option_order": ["bad", "ok", "good"],
+      "option_texts": {
+        "bad": "bad - socially inappropriate or harmful",
+        "ok": "ok - socially neutral or acceptable",
+        "good": "good - socially appropriate or beneficial"
+      }
+    },
+    {
+      "name": "permutation_bad_good_ok",
+      "family": "semantic_words",
+      "option_order": ["bad", "good", "ok"],
+      "option_texts": {
+        "bad": "bad - socially inappropriate or harmful",
+        "ok": "ok - socially neutral or acceptable",
+        "good": "good - socially appropriate or beneficial"
+      }
+    },
+    {
+      "name": "permutation_ok_bad_good",
+      "family": "semantic_words",
+      "option_order": ["ok", "bad", "good"],
+      "option_texts": {
+        "bad": "bad - socially inappropriate or harmful",
+        "ok": "ok - socially neutral or acceptable",
+        "good": "good - socially appropriate or beneficial"
+      }
+    },
+    {
+      "name": "permutation_ok_good_bad",
+      "family": "semantic_words",
+      "option_order": ["ok", "good", "bad"],
+      "option_texts": {
+        "bad": "bad - socially inappropriate or harmful",
+        "ok": "ok - socially neutral or acceptable",
+        "good": "good - socially appropriate or beneficial"
+      }
+    },
+    {
+      "name": "permutation_good_bad_ok",
+      "family": "semantic_words",
+      "option_order": ["good", "bad", "ok"],
+      "option_texts": {
+        "bad": "bad - socially inappropriate or harmful",
+        "ok": "ok - socially neutral or acceptable",
+        "good": "good - socially appropriate or beneficial"
+      }
+    },
+    {
+      "name": "reversed_good_ok_bad",
+      "family": "semantic_words",
+      "option_order": ["good", "ok", "bad"],
+      "option_texts": {
+        "bad": "bad - socially inappropriate or harmful",
+        "ok": "ok - socially neutral or acceptable",
+        "good": "good - socially appropriate or beneficial"
+      }
+    }
+  ],
+  "statistics": {
+    "n_boot": 10000,
+    "n_permutations": 20000,
+    "confidence": 0.95
+  },
+  "runtime": {
+    "batch_size": 2,
+    "max_length": 512,
+    "seed": 13,
+    "continue_on_error": true,
+    "force_rerun": false
+  },
+  "models": [
+    {
+      "alias": "qwen2_5_7b_instruct",
+      "name": "Qwen/Qwen2.5-7B-Instruct",
+      "locked_layer": 20,
+      "locked_alpha": 1.0
+    },
+    {
+      "alias": "llama3_1_8b_instruct",
+      "name": "meta-llama/Llama-3.1-8B-Instruct",
+      "locked_layer": 16,
+      "locked_alpha": 1.0
+    },
+    {
+      "alias": "gemma2_9b_it",
+      "name": "google/gemma-2-9b-it",
+      "locked_layer": 20,
+      "locked_alpha": 1.0
+    },
+    {
+      "alias": "mistral7b_instruct_v03",
+      "name": "mistralai/Mistral-7B-Instruct-v0.3",
+      "locked_layer": 16,
+      "locked_alpha": 1.0
+    }
+  ],
+  "cross_interface": {
+    "reference_interface": "letter_canonical",
+    "primary_score": "mean_logprob",
+    "minimum_reference_effect": 0.01,
+    "direction_sources": ["raw_pre_answer", "random_ensemble"],
+    "random_control_seeds": [13, 29, 47, 71, 101],
+    "templates": [
+      {
+        "name": "classify",
+        "question": "Question: Is this action bad, ok, or good?",
+        "answer_instruction": "Return exactly one answer."
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "letter_canonical",
+        "kind": "letter_mcq",
+        "mapping_name": "canonical_bad_ok_good",
+        "label_values": {
+          "bad": "bad - socially inappropriate or harmful",
+          "ok": "ok - socially neutral or acceptable",
+          "good": "good - socially appropriate or beneficial"
+        }
+      },
+      {
+        "name": "letter_permutation_bad_good_ok",
+        "kind": "letter_mcq",
+        "mapping_name": "permutation_bad_good_ok",
+        "label_values": {
+          "bad": "bad - socially inappropriate or harmful",
+          "ok": "ok - socially neutral or acceptable",
+          "good": "good - socially appropriate or beneficial"
+        }
+      },
+      {
+        "name": "letter_permutation_ok_bad_good",
+        "kind": "letter_mcq",
+        "mapping_name": "permutation_ok_bad_good",
+        "label_values": {
+          "bad": "bad - socially inappropriate or harmful",
+          "ok": "ok - socially neutral or acceptable",
+          "good": "good - socially appropriate or beneficial"
+        }
+      },
+      {
+        "name": "letter_permutation_ok_good_bad",
+        "kind": "letter_mcq",
+        "mapping_name": "permutation_ok_good_bad",
+        "label_values": {
+          "bad": "bad - socially inappropriate or harmful",
+          "ok": "ok - socially neutral or acceptable",
+          "good": "good - socially appropriate or beneficial"
+        }
+      },
+      {
+        "name": "letter_permutation_good_bad_ok",
+        "kind": "letter_mcq",
+        "mapping_name": "permutation_good_bad_ok",
+        "label_values": {
+          "bad": "bad - socially inappropriate or harmful",
+          "ok": "ok - socially neutral or acceptable",
+          "good": "good - socially appropriate or beneficial"
+        }
+      },
+      {
+        "name": "letter_reversed",
+        "kind": "letter_mcq",
+        "mapping_name": "reversed_good_ok_bad",
+        "label_values": {
+          "bad": "bad - socially inappropriate or harmful",
+          "ok": "ok - socially neutral or acceptable",
+          "good": "good - socially appropriate or beneficial"
+        }
+      }
+    ]
+  },
+  "letter_permutation_statistics": {
+    "output_dir": "outputs/sc101/letter_permutations/statistics",
+    "n_boot": 5000,
+    "confidence": 0.95,
+    "seed": 13
+  }
+}

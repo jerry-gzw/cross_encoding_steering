@@ -1,42 +1,46 @@
-# Cross-Interface Evaluation of Activation Steering
+# What Does Activation Steering Control?
 
-Code for the paper **Do Activation-Steering Gains Survive the Answer Interface?**
+Code for the paper **What Does Activation Steering Control? Cross-Interface Evaluation for Alignment**.
 
-The repository evaluates a contrastive activation direction after freezing it
-and changing how the same answer labels are represented. It contains the code
-for the paper's three questions:
+The central experiment extracts an activation-steering direction once, freezes
+it, and changes how the same answer meanings are represented. The released
+pipeline tests whether the resulting movement follows the current label,
+the answer identifier used during extraction, or the row in which that
+identifier originally appeared.
 
-1. Does a frozen steering effect remain detectable across answer interfaces?
-2. Does steering improve discrimination between matched contexts with
-   different constraints?
-3. Can the original multiple-choice and open-ended evaluations of a published
-   CAA protocol yield different verdicts?
+## Evidence included
 
-## Included experiments
+- **Strict NormBank identification:** all six A/B/C mappings on
+  setting-behavior-group- and endpoint-disjoint splits.
+- **Factorial attribution:** independently varies semantic mapping, answer
+  identifier vocabulary, and displayed row order.
+- **Cross-method replication:** CAA-style residual-stream addition and an
+  ITI-style head-probe intervention.
+- **SC101 scope replication:** action-only, weakly matched Social Chemistry 101
+  pairs provide a contrasting task-level interface profile.
+- **Matched-context selectivity:** asks whether one frozen intervention
+  distinguishes contexts that share a setting and behavior but differ in
+  constraints.
+- **Non-norm control:** applies the same interface protocol to same-premise
+  MultiNLI pairs.
+- **Published CAA case study:** compares the original multiple-choice and
+  open-ended evaluation branches for hallucination, refusal, and sycophancy.
 
-- **NormBank cross-interface audit:** original A/B/C, all five non-source A/B/C
-  mappings, direct labels, and opaque codewords.
-- **Direction controls:** mapping-balanced, mapping-sensitive, label-cue,
-  slot-layout, wrong-direction, and five norm-matched Gaussian controls.
-- **Matched-context selectivity:** pair-level interaction and ranking diagnostics
-  on setting-behavior-matched NormBank pairs.
-- **MNLI control:** the same interface protocol on a matched non-norm
-  three-class task.
-- **Published CAA case study:** original and swapped A/B, direct text, opaque
-  codewords, key competence, and open-ended generation for hallucination,
-  refusal, and sycophancy.
-
-## Repository layout
+## Layout
 
 ```text
 configs/                    Reproduction configurations
-datasets/                   Place raw datasets here; data are not redistributed
-scripts/                    Composable experiment runners
+datasets/                   Place raw datasets here
+scripts/                    Resumable experiment runners
 src/cross_interface_steering/
-                             Pairing, steering, scoring, controls, and statistics
-tests/                      CPU unit tests for the released analysis code
+                             Pairing, interventions, scoring, and statistics
+tests/                      CPU unit tests
+paper_results/              Compact machine-readable reported summaries
 outputs/                    Generated at runtime and ignored by Git
 ```
+
+Raw datasets, model weights, API credentials, and generated outputs are not
+redistributed.
 
 ## Installation
 
@@ -45,66 +49,58 @@ Python 3.10 or newer is required.
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[gpu]"
+pip install -e ".[gpu,dev]"
 ```
 
-To reproduce the optional API-based open-ended judging:
+Open-ended automated judging additionally requires:
 
 ```bash
-pip install -e ".[gpu,judges]"
+pip install -e ".[judges]"
 ```
 
-CPU-only data preparation and statistical aggregation require only the base
-dependencies:
+The reported environment used Ubuntu 22.04.5 LTS, CUDA 12.2, Python 3.11.7,
+PyTorch 2.7.0, Transformers 4.52.4, two NVIDIA A100-PCIE-40GB GPUs, an AMD
+EPYC 7702P CPU, and 503 GB RAM.
 
-```bash
-pip install -e .
-```
-
-The scripts infer the repository root automatically. Set `NDD_PROJECT_ROOT`
-only when `datasets/` and `outputs/` should live under another directory.
-
-### Reference computing environment
-
-The reported experiments were run on Ubuntu 22.04.5 LTS with CUDA 12.2,
-Python 3.11.7, PyTorch 2.7.0, and Transformers 4.52.4. The server had two
-NVIDIA A100-PCIE-40GB GPUs, an AMD EPYC 7702P 64-Core CPU, and 503 GB RAM.
-GPU visibility is controlled by the caller through `CUDA_VISIBLE_DEVICES`;
-the scripts do not contain fixed GPU IDs.
+Scripts infer the repository root. `NDD_PROJECT_ROOT` is optional and is only
+needed when datasets and outputs live elsewhere.
 
 ## Data
 
-Place the following files under `datasets/`:
+Place the raw files at:
 
 ```text
 datasets/NormBank.csv
+datasets/social-chem-101.v1.0.tsv
 datasets/multinli_1.0_train.jsonl
-datasets/CAA/                       cloned public CAA repository
+datasets/CAA/
 ```
 
-See [DATASETS.md](DATASETS.md) for sources, schemas, and exactly which fields
-are used. To fetch the public CAA reference repository:
+Alternative paths accepted by the configs are documented in
+[DATASETS.md](DATASETS.md). Fetch the public CAA reference repository with:
 
 ```bash
 bash scripts/fetch_caa_reference.sh
 ```
 
-## Models and locked layers
+## Models
 
-The controlled NormBank and MNLI experiments use a common 75%-depth rule:
+The main NormBank experiments use approximately 75%-depth residual-stream
+blocks and `alpha=0.8`:
 
-| Alias | Model | Zero-based block | Decoder blocks |
-|---|---|---:|---:|
-| `qwen2_5_7b_instruct` | Qwen2.5-7B-Instruct | 20 | 28 |
-| `llama3_1_8b_instruct` | Llama-3.1-8B-Instruct | 23 | 32 |
-| `mistral7b_instruct_v03` | Mistral-7B-Instruct-v0.3 | 23 | 32 |
-| `gemma2_9b_it` | Gemma-2-9B-IT | 31 | 42 |
+| Alias | Model | Zero-based block |
+|---|---|---:|
+| `qwen2_5_7b_instruct` | Qwen2.5-7B-Instruct | 20 |
+| `llama3_1_8b_instruct` | Llama-3.1-8B-Instruct | 23 |
+| `mistral7b_instruct_v03` | Mistral-7B-Instruct-v0.3 | 23 |
+| `gemma2_9b_it` | Gemma-2-9B-IT | 31 |
 
-The intervention strength is `alpha=0.8`. The published CAA replication uses
-the layers and multipliers specified by that protocol; see
-`configs/published_caa_protocol_audit.example.json`.
+SC101 uses the middle-layer settings recorded in
+`configs/sc101_letter_permutation.example.json`. The ITI-style audit selects
+heads and intervention strength on validation data. The published CAA case
+study follows that protocol's own layers and multipliers.
 
-Local model paths can be supplied without editing a config:
+Local model paths can be supplied without editing tracked configs:
 
 ```bash
 export NDD_MODEL_SOURCE_OVERRIDES='{
@@ -112,64 +108,109 @@ export NDD_MODEL_SOURCE_OVERRIDES='{
 }'
 ```
 
-Use `NDD_MODELS` to run a subset of the four controlled-audit models:
+Run a subset of models with:
 
 ```bash
 export NDD_MODELS=qwen2_5_7b_instruct,llama3_1_8b_instruct
 ```
 
-## Reproduction
+The caller selects GPUs:
 
-### 1. Prepare NormBank
+```bash
+CUDA_VISIBLE_DEVICES=0 ...
+```
+
+## Reproduce the main evidence
+
+### 1. Strict NormBank split
+
+```bash
+bash scripts/prepare_normbank_strict.sh
+```
+
+This creates group- and endpoint-disjoint train, validation, and test splits in
+`outputs/prepared/normbank_group_disjoint/` and writes a split-isolation audit.
+
+### 2. Exhaustive CAA mapping audit
+
+```bash
+CUDA_VISIBLE_DEVICES=0 \
+NDD_STRICT_TASK=caa \
+bash scripts/run_normbank_strict_audit.sh
+```
+
+To distribute models across GPUs, invoke the same command in separate shells
+with different `CUDA_VISIBLE_DEVICES` and `NDD_MODELS`, then aggregate:
+
+```bash
+NDD_STRICT_TASK=caa NDD_STRICT_CAA_PHASE=summarize \
+bash scripts/run_normbank_strict_audit.sh
+```
+
+### 3. Identifier-position-semantics factorial
+
+```bash
+CUDA_VISIBLE_DEVICES=0 \
+NDD_STRICT_TASK=factorial \
+NDD_FACTORIAL_PHASE=run \
+bash scripts/run_normbank_strict_audit.sh
+
+NDD_STRICT_TASK=factorial \
+NDD_FACTORIAL_PHASE=aggregate \
+bash scripts/run_normbank_strict_audit.sh
+
+NDD_STRICT_TASK=factorial-statistics \
+bash scripts/run_normbank_strict_audit.sh
+```
+
+### 4. ITI-style replication
+
+```bash
+CUDA_VISIBLE_DEVICES=0 \
+NDD_STRICT_TASK=iti \
+NDD_ITI_PHASE=run \
+bash scripts/run_normbank_strict_audit.sh
+
+NDD_STRICT_TASK=iti NDD_ITI_PHASE=summarize \
+bash scripts/run_normbank_strict_audit.sh
+```
+
+The primary ITI aggregate contains only models that pass the prespecified
+source-interface validation gate; the competence table reports every model.
+
+### 5. SC101 scope replication
+
+```bash
+bash scripts/prepare_sc101.sh
+CUDA_VISIBLE_DEVICES=0 bash scripts/run_sc101_audit.sh
+```
+
+Use `NDD_SC101_PHASE=run`, `aggregate`, or `summarize` to resume individual
+phases.
+
+## Supporting evidence
+
+The original pair-ID split remains useful for direct-label and opaque-codeword
+interfaces, nuisance directions, and matched-context diagnostics:
 
 ```bash
 bash scripts/prepare_normbank.sh
-```
-
-This writes deterministic pair-ID splits, pair diagnostics, and ranked
-endpoints to `outputs/prepared/normbank/`.
-
-### 2. Run the NormBank audit
-
-Run the full sequence on the GPU selected by the caller:
-
-```bash
 CUDA_VISIBLE_DEVICES=0 bash scripts/run_normbank_audit.sh
 ```
 
-Individual tasks can be resumed without rerunning earlier outputs:
+Each component can be resumed with `NDD_NORMBANK_TASK`:
+`cross-interface`, `nuisance`, `permutations`, `context`, or `statistics`.
 
-```bash
-CUDA_VISIBLE_DEVICES=0 NDD_NORMBANK_TASK=cross-interface \
-  bash scripts/run_normbank_audit.sh
-CUDA_VISIBLE_DEVICES=0 NDD_NORMBANK_TASK=nuisance \
-  bash scripts/run_normbank_audit.sh
-CUDA_VISIBLE_DEVICES=0 NDD_NORMBANK_TASK=permutations \
-  bash scripts/run_normbank_audit.sh
-NDD_NORMBANK_TASK=context bash scripts/run_normbank_audit.sh
-NDD_NORMBANK_TASK=statistics bash scripts/run_normbank_audit.sh
-```
-
-### 3. Run the MNLI control
+Run the same-premise MultiNLI control with:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 bash scripts/run_mnli_control.sh
 ```
 
-Set `NDD_MNLI_PHASE=run` or `NDD_MNLI_PHASE=statistics` to execute only one
-phase.
-
-### 4. Run the published CAA case study
-
-First validate the downloaded CAA files:
+Run the published CAA case study with:
 
 ```bash
 NDD_CAA_PHASE=prepare bash scripts/run_published_caa_audit.sh
-```
-
-The two Llama-2 models can be run independently:
-
-```bash
 CUDA_VISIBLE_DEVICES=0 NDD_CAA_PHASE=run \
   NDD_CAA_MODELS=llama2_7b_chat bash scripts/run_published_caa_audit.sh
 CUDA_VISIBLE_DEVICES=1 NDD_CAA_PHASE=run \
@@ -177,72 +218,36 @@ CUDA_VISIBLE_DEVICES=1 NDD_CAA_PHASE=run \
 NDD_CAA_PHASE=aggregate bash scripts/run_published_caa_audit.sh
 ```
 
-Open-ended judging is disabled in the example config to prevent accidental API
-charges. Copy the config, enable the desired entries in `judges`, and set the
-corresponding `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY`.
-The paper uses GPT-5.1, Claude Sonnet 4.6, and Gemini 3.5 Flash under the same
-calibrated 0--10 rubric. Each judge is independently resumable:
-
-```bash
-NDD_CAA_CONFIG=/path/to/local_caa_config.json \
-NDD_CAA_JUDGES=gpt5_1_rubric_v3 \
-NDD_CAA_PHASE=judge bash scripts/run_published_caa_audit.sh
-
-NDD_CAA_CONFIG=/path/to/local_caa_config.json \
-NDD_CAA_JUDGES=claude_sonnet_4_6_rubric_v3 \
-NDD_CAA_PHASE=judge bash scripts/run_published_caa_audit.sh
-
-NDD_CAA_CONFIG=/path/to/local_caa_config.json \
-NDD_CAA_JUDGES=gemini_3_5_flash_rubric_v3_batch10 \
-NDD_CAA_PHASE=judge bash scripts/run_published_caa_audit.sh
-
-NDD_CAA_CONFIG=/path/to/local_caa_config.json \
-NDD_CAA_PHASE=aggregate bash scripts/run_published_caa_audit.sh
-```
-
-### 5. Run validity controls
-
-```bash
-CUDA_VISIBLE_DEVICES=0 NDD_VALIDITY_PHASE=random \
-  bash scripts/run_validity_controls.sh
-NDD_VALIDITY_PHASE=summarize bash scripts/run_validity_controls.sh
-```
+API judging is disabled by default. Enable only the desired entries in a local
+copy of `configs/published_caa_protocol_audit.example.json`, set the provider
+API key, and run `NDD_CAA_PHASE=judge`.
 
 ## Principal outputs
 
 | Evidence | Output directory |
 |---|---|
-| Cross-interface effects | `outputs/normbank/cross_interface/` |
-| Nuisance directions | `outputs/normbank/nuisance_baselines/` |
-| Five non-source mappings | `outputs/normbank/letter_permutations/` |
-| Context selectivity | `outputs/normbank/context_selectivity/` |
-| Control-adjusted statistics | `outputs/interface_statistics/` |
-| MNLI control | `outputs/mnli_control/` |
+| Strict CAA mappings | `outputs/normbank/group_disjoint_letter_permutations/` |
+| Factorial attribution | `outputs/normbank/interface_factorial/` |
+| ITI replication | `outputs/normbank/iti_probe_intervention/` |
+| SC101 scope | `outputs/sc101/letter_permutations/` |
+| Supporting NormBank audit | `outputs/normbank/` |
+| MultiNLI control | `outputs/mnli_control/` |
 | Published CAA case study | `outputs/published_caa/` |
-| Random/key/judge validity checks | `outputs/validity_controls/` |
 
-All GPU runners are resumable at the model directory level unless
-`force_rerun` is enabled in the corresponding configuration.
-
-## Released paper results
-
-`paper_results/` contains the compact machine-readable summaries used for the
-main tables, figures, and direct supplementary controls. These files are
-included for result verification; the commands above regenerate their upstream
-outputs from the public datasets and model checkpoints. See
-`paper_results/README.md` for the evidence-to-file map.
+`paper_results/` contains compact copies of the reported summaries and an
+evidence-to-file map. The experiment commands above regenerate their upstream
+outputs from raw datasets and public model checkpoints.
 
 ## Tests
 
 ```bash
-pip install -e ".[dev]"
 pytest -q
 ```
 
-The tests exercise prompt/interface construction, current-label versus
-source-slot accounting, permutation statistics, CAA aggregation, validity
-controls, and last-token indexing without downloading a model.
+The CPU tests cover split isolation, prompt and interface construction,
+factorial attribution, ITI probe selection and controls, permutation
+statistics, published CAA aggregation, and last-token indexing.
 
 ## License
 
-This code is released under the MIT License. See `LICENSE`.
+MIT. Dataset and model licenses remain with their original publishers.

@@ -1,0 +1,2 @@
+group_column,n_splits,pair_id_overlap,context_group_overlap,endpoint_overlap,pair_id_disjoint,context_group_disjoint,endpoint_disjoint,strict_split_isolation_pass
+group_key,3,0,0,0,True,True,True,True

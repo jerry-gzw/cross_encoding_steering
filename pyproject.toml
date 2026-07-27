@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cross-interface-steering-evaluation"
 version = "1.0.0"
-description = "Artifact code for cross-interface evaluation of activation-steering directions."
+description = "Artifact code for cross-interface evaluation of activation steering for alignment."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

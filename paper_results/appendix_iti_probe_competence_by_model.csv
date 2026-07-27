@@ -1,0 +1,5 @@
+model_alias,model_name,top_k_heads,alpha,mean_validation_target_margin_gain,min_contrast_validation_gain,n_positive_contrasts,n_contrasts,validation_competence_pass,minimum_validation_gain,mean_selected_head_validation_accuracy,min_contrast_selected_head_validation_accuracy,max_head_validation_accuracy,analysis_scope,model_label
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,48.0,10.0,15.985817193364104,11.955632323399186,3.0,3.0,True,0.0,0.7391628689236112,0.6756998697916666,0.822265625,primary_competent_model,Qwen
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,8.0,5.0,-0.1686502893765767,-0.2518893480300903,0.0,3.0,False,0.0,0.7328287760416666,0.66796875,0.78515625,excluded_by_source_interface_gate,Llama
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,48.0,10.0,9.505466997623444,8.616591930389404,3.0,3.0,True,0.0,0.7182752821180556,0.6490885416666666,0.791015625,primary_competent_model,Mistral
+gemma2_9b_it,google/gemma-2-9b-it,32.0,20.0,1.0069858233133953,0.3037328720092773,3.0,3.0,True,0.0,0.74066162109375,0.6773681640625,0.8203125,primary_competent_model,Gemma

@@ -1,28 +1,53 @@
-# Machine-readable paper results
+# Reported result map
 
-These compact CSV files are the final summaries used to check the paper's
-tables, figures, and direct supplementary controls. They are not substitute
-datasets and do not contain raw prompts, model generations, or API keys.
+These CSV files are compact copies of the summaries used by the paper. They
+support result verification; raw model outputs remain generated artifacts.
 
-## Main paper
+## Cross-interface identification
 
-| Evidence | Files |
-|---|---|
-| Interface-specific detectability | `main_interface_calibration_global.csv`, `main_interface_calibration_per_model.csv` |
-| Five non-source letter mappings | `main_letter_permutation_by_model.csv` |
-| Matched-context selectivity | `main_context_discrimination_statistics.csv` |
-| Published CAA MCQ/open-ended comparison | `main_published_caa_mcq_open_ended_comparison.csv` |
+- `appendix_group_disjoint_split_isolation.csv`
+- `appendix_group_disjoint_split_inventory.csv`
+- `appendix_group_disjoint_caa_bootstrap_ci.csv`
+- `appendix_group_disjoint_caa_by_stratum.csv`
+- `appendix_group_disjoint_caa_decision.csv`
+- `appendix_group_disjoint_caa_swap_exclusion_decision.csv`
+- `main_group_disjoint_caa_sensitivity.csv`
 
-## Supplementary controls
+## Factorial attribution and competence
 
-| Evidence | Files |
-|---|---|
-| Mapping-average norm retention | `appendix_mapping_balance_norm_retention_cells.csv`, `appendix_mapping_balance_norm_retention_overall.csv` |
-| Letter-mapping uncertainty and contrast breakdown | `appendix_letter_permutation_bootstrap_ci.csv`, `appendix_letter_permutation_by_contrast.csv`, `appendix_letter_permutation_swap_exclusion_decision.csv` |
-| Context-pair filtering and cluster bootstrap | `appendix_context_pair_filter_audit.csv`, `appendix_context_cluster_bootstrap_sensitivity.csv` |
-| Five-random-control sensitivity | `multi_random_standardized_gain_summary.csv`, `multi_random_context_summary.csv` |
-| Opaque-key competence | `normbank_key_competence_summary.csv`, `appendix_published_caa_opaque_competence.csv` |
-| Multi-judge CAA robustness | `appendix_published_caa_multi_judge_agreement.csv`, `appendix_published_caa_multi_judge_completeness.csv`, `appendix_published_caa_multi_judge_quality.csv`, `appendix_published_caa_multi_judge_statistics.csv`, `appendix_published_caa_open_ended_paired_statistics.csv` |
+- `main_interface_factorial_attribution_by_model.csv`
+- `main_interface_factorial_identifier_sensitivity.csv`
+- `appendix_interface_factorial_baseline_by_model.csv`
+- `appendix_interface_factorial_key_competence_summary.csv`
+- `appendix_interface_factorial_paired_contrasts.csv`
 
-The raw and intermediate outputs are regenerated under `outputs/` by the
-commands in the repository README and are intentionally not committed.
+## Cross-method replication
+
+- `main_cross_method_steering_summary.csv`
+- `appendix_iti_mapping_effects.csv`
+- `appendix_iti_model_mapping_effects.csv`
+- `appendix_iti_probe_competence_by_model.csv`
+- `appendix_iti_selected_minus_wrong.csv`
+
+## SC101 scope
+
+- `appendix_per_contrast_sc101.csv`
+
+## Matched-context, MultiNLI, and validity controls
+
+- `main_context_discrimination_statistics.csv`
+- `main_interface_calibration_global.csv`
+- `main_interface_calibration_per_model.csv`
+- `multi_random_context_summary.csv`
+- `multi_random_standardized_gain_summary.csv`
+- `normbank_key_competence_summary.csv`
+
+## Published CAA case study
+
+- `main_published_caa_mcq_open_ended_comparison.csv`
+- `appendix_published_caa_open_ended_paired_statistics.csv`
+- `appendix_published_caa_multi_judge_agreement.csv`
+- `appendix_published_caa_multi_judge_completeness.csv`
+- `appendix_published_caa_multi_judge_quality.csv`
+- `appendix_published_caa_multi_judge_statistics.csv`
+- `appendix_published_caa_opaque_competence.csv`

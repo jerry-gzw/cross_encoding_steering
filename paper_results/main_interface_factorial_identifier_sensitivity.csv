@@ -1,0 +1,13 @@
+model_alias,model_name,identifier_set,metric,n_pairs,mean,ci_low,ci_high,confidence,scope,model_label,identifier_label
+gemma2_9b_it,google/gemma-2-9b-it,letters_abc,extraction_identifier_margin_gain,1536,3.3626820047696437,3.3492082617901,3.3766444342003927,0.95,competence_gated,Gemma,A/B/C
+gemma2_9b_it,google/gemma-2-9b-it,letters_xyz,extraction_identifier_margin_gain,1536,0.2759716731530648,0.2715244088459898,0.2805027304976074,0.95,competence_gated,Gemma,X/Y/Z
+gemma2_9b_it,google/gemma-2-9b-it,numbers_123,extraction_identifier_margin_gain,1536,0.4193470329046249,0.4139298272905526,0.4248432700832685,0.95,competence_gated,Gemma,1/2/3
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,letters_abc,extraction_identifier_margin_gain,1536,1.4203262916869588,1.4133140644265545,1.4273551516234873,0.95,competence_gated,Llama,A/B/C
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,letters_xyz,extraction_identifier_margin_gain,1536,0.2871440119213528,0.2788035045067469,0.2954641544156604,0.95,competence_gated,Llama,X/Y/Z
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,numbers_123,extraction_identifier_margin_gain,1536,0.0769146228278124,0.0762369318968719,0.0776215325075167,0.95,competence_gated,Llama,1/2/3
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,letters_abc,extraction_identifier_margin_gain,1536,4.676031744976839,4.656227697067791,4.695496143048836,0.95,competence_gated,Mistral,A/B/C
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,letters_xyz,extraction_identifier_margin_gain,1536,0.9707118835714128,0.9648643556430384,0.9764355172851572,0.95,competence_gated,Mistral,X/Y/Z
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,numbers_123,extraction_identifier_margin_gain,1536,0.3219377971081822,0.3192178799701786,0.3247381234127613,0.95,competence_gated,Mistral,1/2/3
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,letters_abc,extraction_identifier_margin_gain,1536,2.6578931707718527,2.63926773758797,2.67646071813681,0.95,competence_gated,Qwen,A/B/C
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,letters_xyz,extraction_identifier_margin_gain,1536,1.54716119128689,1.5341602281462758,1.5602931783278582,0.95,competence_gated,Qwen,X/Y/Z
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,numbers_123,extraction_identifier_margin_gain,1536,0.4320866573910246,0.4283690747586257,0.4359382778438616,0.95,competence_gated,Qwen,1/2/3

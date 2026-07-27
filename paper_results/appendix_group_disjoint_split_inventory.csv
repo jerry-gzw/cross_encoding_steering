@@ -1,0 +1,4 @@
+split,n_pairs,n_context_groups,n_endpoints,n_contrasts
+test,9353,1302,12799,3
+train,75868,10620,105487,3
+validation,9796,1328,13622,3
