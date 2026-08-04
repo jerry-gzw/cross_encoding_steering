@@ -1,0 +1,19 @@
+{
+  "output_dir": "outputs/central_inference",
+  "inputs": {
+    "pairs_path": "outputs/prepared/normbank_group_disjoint/pairs.csv",
+    "letter_effects_path": "outputs/normbank/group_disjoint_letter_permutations/statistics/letter_permutation_pair_adjusted_effects.csv",
+    "letter_pair_ci_path": "outputs/normbank/group_disjoint_letter_permutations/statistics/letter_permutation_bootstrap_ci.csv",
+    "factorial_effects_path": "outputs/normbank/interface_factorial/factorial_pair_effects.csv",
+    "factorial_key_path": "outputs/normbank/interface_factorial/mapping_key_competence_summary.csv",
+    "factorial_pair_ci_path": "outputs/normbank/interface_factorial/statistics/factorial_pair_cluster_bootstrap_ci.csv",
+    "factorial_baseline_rows_path": "outputs/normbank/interface_factorial/baseline_competence_rows.csv",
+    "readout_effects_path": "outputs/normbank/readout_geometry/readout_pair_effects.csv",
+    "readout_pair_ci_path": "outputs/normbank/readout_geometry/readout_component_paired_statistics.csv"
+  },
+  "statistics": {
+    "n_boot": 5000,
+    "confidence": 0.95,
+    "seed": 13
+  }
+}

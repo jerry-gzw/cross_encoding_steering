@@ -1,0 +1,27 @@
+{
+  "base_config": "evaluation_validity_controls.example.json",
+  "validity_controls": {
+    "output_dir": "outputs/published_caa/human_annotation_180",
+    "published_caa_judgments": "outputs/published_caa/published_caa_open_ended_judgments__gpt5_1_rubric_v3.csv",
+    "published_caa_multi_judge_scores": "outputs/published_caa/published_caa_multi_judge_scores.csv",
+    "annotation_files": [
+      "outputs/published_caa/human_annotation_180/annotator_1_blind.csv",
+      "outputs/published_caa/human_annotation_180/annotator_2_blind.csv"
+    ],
+    "adjudication_file": "outputs/published_caa/human_annotation_180/adjudicator_blind.csv",
+    "panel_judge_aliases": [
+      "gpt5_1_rubric_v3",
+      "claude_sonnet_4_6_rubric_v3",
+      "gemini_3_5_flash_rubric_v3_batch10"
+    ],
+    "adjudication_score_gap": 3,
+    "required_multipliers": [-2.0, 0.0, 2.0],
+    "judge_sample_per_model_behavior": 10,
+    "judge_pair_items_across_models": true,
+    "statistics": {
+      "n_boot": 5000,
+      "confidence": 0.95,
+      "seed": 13
+    }
+  }
+}

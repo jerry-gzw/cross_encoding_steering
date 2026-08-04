@@ -1,0 +1,25 @@
+{
+  "base_config": "normbank_group_disjoint_six_letter_base.example.json",
+  "output_dir": "outputs/normbank/position_localization",
+  "extraction_positions": [
+    "scenario_end",
+    "pre_answer"
+  ],
+  "intervention_position": "pre_answer",
+  "transport_control_mappings": [
+    "canonical_taboo_normal_expected",
+    "permutation_normal_expected_taboo",
+    "permutation_expected_taboo_normal",
+    "reversed_expected_normal_taboo"
+  ],
+  "enabled_modes": [
+    "raw_canonical_direction",
+    "raw_position_norm_matched",
+    "zero_direction_control"
+  ],
+  "statistics": {
+    "n_boot": 5000,
+    "n_permutations": 10000,
+    "confidence": 0.95
+  }
+}

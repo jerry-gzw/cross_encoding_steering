@@ -43,6 +43,18 @@ The control matches examples sharing the same premise and carrying different
 relation labels. It is a non-norm comparison for the evaluation protocol, not
 a general NLI benchmark claim.
 
+## Moral Integrity Corpus (MIC)
+
+- Source: Moral Integrity Corpus release.
+- Local path: `datasets/MIC.csv`.
+- Required fields include `split`, `Q`, `A`, `rot`, `moral`, `A_agrees`, and
+  `rot-agree`.
+
+The supplement uses MIC only as a binary extraction-position sensitivity
+check. Pairs keep the dialogue and moral axis fixed while changing the rule of
+thumb. Because binary label swapping algebraically couples current-label and
+extraction-identifier effects, MIC is not used for the main attribution claim.
+
 ## Public CAA repository
 
 - Source: <https://github.com/nrimsky/CAA>

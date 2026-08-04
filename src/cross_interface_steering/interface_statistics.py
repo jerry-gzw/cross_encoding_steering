@@ -58,13 +58,13 @@ class InterfaceStatisticsConfig:
             project_root=root,
             cross_interface_pair_effects=resolve(str(data.get(
                 "cross_interface_pair_effects",
-                "outputs/normbank/cross_interface/cross_interface_pair_effects.csv",
+                "outputs/cross_interface_steering/normbank/cross_interface_pair_effects.csv",
             ))),
             nuisance_pair_effects=resolve(str(data["nuisance_pair_effects"])),
             context_pair_rows=resolve(str(data["context_pair_rows"])),
             output_dir=resolve(str(data.get(
                 "output_dir",
-                "outputs/interface_statistics",
+                "outputs/interface_statistical_synthesis",
             ))),
             n_boot=n_boot,
             confidence=confidence,

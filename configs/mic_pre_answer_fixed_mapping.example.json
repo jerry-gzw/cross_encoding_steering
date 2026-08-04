@@ -1,0 +1,5 @@
+{
+  "base_config": "mic_fixed_direction_mapping.example.json",
+  "output_dir": "outputs/mic/pre_answer",
+  "extraction_position": "pre_answer"
+}

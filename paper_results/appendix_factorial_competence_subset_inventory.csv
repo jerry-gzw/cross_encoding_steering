@@ -1,0 +1,16 @@
+scope,model_alias,n_pairs,n_groups,n_model_contrast_strata,n_all_six_correct_pairs,min_gold_logprob_median
+canonical_both_endpoints_correct,__pooled__,666,483,12,,
+canonical_both_endpoints_correct,gemma2_9b_it,266,220,3,137.0,-0.353515625
+canonical_both_endpoints_correct,llama3_1_8b_instruct,310,257,3,104.0,-0.69140625
+canonical_both_endpoints_correct,mistral7b_instruct_v03,278,232,3,72.0,-0.3505859375
+canonical_both_endpoints_correct,qwen2_5_7b_instruct,359,278,3,161.0,-0.1640625
+all_six_abc_both_endpoints_correct,__pooled__,309,256,12,,
+all_six_abc_both_endpoints_correct,gemma2_9b_it,137,124,3,137.0,-0.353515625
+all_six_abc_both_endpoints_correct,llama3_1_8b_instruct,104,93,3,104.0,-0.69140625
+all_six_abc_both_endpoints_correct,mistral7b_instruct_v03,72,67,3,72.0,-0.3505859375
+all_six_abc_both_endpoints_correct,qwen2_5_7b_instruct,161,137,3,161.0,-0.1640625
+all_six_abc_high_confidence,__pooled__,175,157,12,,
+all_six_abc_high_confidence,gemma2_9b_it,70,64,3,137.0,-0.353515625
+all_six_abc_high_confidence,llama3_1_8b_instruct,53,51,3,104.0,-0.69140625
+all_six_abc_high_confidence,mistral7b_instruct_v03,36,34,3,72.0,-0.3505859375
+all_six_abc_high_confidence,qwen2_5_7b_instruct,81,74,3,161.0,-0.1640625

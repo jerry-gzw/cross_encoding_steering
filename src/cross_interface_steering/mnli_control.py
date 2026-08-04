@@ -158,7 +158,7 @@ class MnliControlConfig:
         return cls(
             project_root=root,
             input_path=resolve(str(data.get("input_path", "datasets/multinli_1.0_train.jsonl"))),
-            output_dir=resolve(str(data.get("output_dir", "outputs/mnli_control"))),
+            output_dir=resolve(str(data.get("output_dir", "outputs/mnli_non_norm_control"))),
             contrasts=contrasts,
             interfaces=interfaces,
             templates=templates,

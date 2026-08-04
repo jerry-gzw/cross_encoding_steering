@@ -1,0 +1,5 @@
+condition,condition_label,n_models,n_mappings,n_contrasts,mean_extraction_identifier_gain,mean_js_shift
+pre_answer_raw,Pre-answer raw,4,5,3.0,0.21808380479332168,0.1123871059680928
+scenario_end_raw,Scenario-end raw,4,5,3.0,0.0037401867672874223,0.009538005059219461
+scenario_end_norm_matched,Scenario-end norm matched,4,5,3.0,0.008505252755951643,0.0021195423605607734
+scenario_end_transport,Scenario-end matched site,4,3,,-0.00016195020128228688,0.00022189394530331666

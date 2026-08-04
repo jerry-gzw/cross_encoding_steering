@@ -1,0 +1,17 @@
+model_alias,model_name,rank,validation_explained_energy_mean,validation_explained_energy_median,meets_threshold,selected_rank
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,2,0.6241333187590719,0.7329246237691058,False,16
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,4,0.8208780833453697,0.8398262428891937,False,16
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,8,0.8856562789938999,0.895307907852811,False,16
+qwen2_5_7b_instruct,Qwen/Qwen2.5-7B-Instruct,16,0.9201942325119752,0.9253855296542696,True,16
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,2,0.8057620127306417,0.8609251574764551,False,4
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,4,0.9531539912984918,0.9633346404402066,True,4
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,8,0.9798699854462004,0.983162847343216,True,4
+llama3_1_8b_instruct,meta-llama/Llama-3.1-8B-Instruct,16,0.9881509804881902,0.9894370014086546,True,4
+gemma2_9b_it,google/gemma-2-9b-it,2,0.6625138925232426,0.7860067816870622,False,8
+gemma2_9b_it,google/gemma-2-9b-it,4,0.8766150695969197,0.9042290457130212,False,8
+gemma2_9b_it,google/gemma-2-9b-it,8,0.9381075920587898,0.9481317751311148,True,8
+gemma2_9b_it,google/gemma-2-9b-it,16,0.9637151923076592,0.9709751805674028,True,8
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,2,0.6838560055039117,0.759198311291024,False,8
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,4,0.869637523659986,0.8858517292872617,False,8
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,8,0.9234671179013572,0.9289343009614044,True,8
+mistral7b_instruct_v03,mistralai/Mistral-7B-Instruct-v0.3,16,0.9458555762756836,0.948587740238618,True,8

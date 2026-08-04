@@ -1,0 +1,39 @@
+{
+  "base_config": "normbank_group_disjoint_six_letter_base.example.json",
+  "output_dir": "outputs/normbank/readout_geometry",
+  "dataset": {
+    "max_test_pairs_per_contrast": 128
+  },
+  "readout_geometry": {
+    "subspace_rank": 0,
+    "rank_candidates": [2, 4, 8, 16],
+    "validation_explained_energy_threshold": 0.9,
+    "max_train_prompts_per_contrast": 64,
+    "max_validation_prompts_per_contrast": 32,
+    "max_control_test_pairs_per_contrast": 64,
+    "gradient_batch_size": 1,
+    "normalize_gradients": true,
+    "random_control_seeds": [
+      13,
+      29,
+      47,
+      71,
+      101,
+      131,
+      173,
+      211,
+      257,
+      307
+    ],
+    "fidelity_alphas": [
+      0.2,
+      0.4,
+      0.8
+    ]
+  },
+  "statistics": {
+    "n_boot": 5000,
+    "n_permutations": 10000,
+    "confidence": 0.95
+  }
+}

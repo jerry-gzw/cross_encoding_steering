@@ -28,11 +28,16 @@ class ValidityControlsConfig:
     target_context_rows: Path
     context_pair_metadata: Path
     published_caa_judgments: Path
+    published_caa_multi_judge_scores: Path
     annotation_files: tuple[Path, Path]
+    adjudication_file: Path
+    panel_judge_aliases: tuple[str, ...]
     target_modes: tuple[str, ...]
     interfaces: tuple[str, ...]
     required_multipliers: tuple[float, ...]
     judge_sample_per_model_behavior: int
+    judge_pair_items_across_models: bool
+    adjudication_score_gap: int
     minimum_base_gap: float
     n_boot: int
     confidence: float
@@ -55,7 +60,7 @@ class ValidityControlsConfig:
 
         spec = dict(data.get("validity_controls", {}))
         output_dir = resolve(
-            str(spec.get("output_dir", "outputs/validity_controls"))
+            str(spec.get("output_dir", "outputs/evaluation_validity_controls"))
         )
         multi_random_output = resolve(str(data.get("output_dir")))
         statistics = dict(spec.get("statistics", {}))
@@ -76,6 +81,9 @@ class ValidityControlsConfig:
         )
         if 0.0 not in required_multipliers or len(required_multipliers) < 2:
             raise ValueError("required_multipliers must contain baseline 0 and an intervention")
+        adjudication_score_gap = int(spec.get("adjudication_score_gap", 3))
+        if adjudication_score_gap < 1:
+            raise ValueError("validity_controls.adjudication_score_gap must be positive")
         return cls(
             project_root=root,
             output_dir=output_dir,
@@ -83,13 +91,13 @@ class ValidityControlsConfig:
             target_pair_effects=resolve(
                 str(spec.get(
                     "target_pair_effects",
-                    "outputs/normbank/nuisance_baselines/cross_interface_pair_effects.csv",
+                    "outputs/interface_nuisance_baselines/normbank/cross_interface_pair_effects.csv",
                 ))
             ),
             target_context_rows=resolve(
                 str(spec.get(
                     "target_context_rows",
-                    "outputs/normbank/context_selectivity/context_discrimination_pair_rows.csv",
+                    "outputs/context_conditioned_discrimination/normbank/context_discrimination_pair_rows.csv",
                 ))
             ),
             context_pair_metadata=resolve(
@@ -101,10 +109,30 @@ class ValidityControlsConfig:
             published_caa_judgments=resolve(
                 str(spec.get(
                     "published_caa_judgments",
-                    "outputs/published_caa/published_caa_open_ended_judgments.csv",
+                    "outputs/published_caa_protocol_audit/published_caa_open_ended_judgments.csv",
+                ))
+            ),
+            published_caa_multi_judge_scores=resolve(
+                str(spec.get(
+                    "published_caa_multi_judge_scores",
+                    "outputs/published_caa_protocol_audit/published_caa_multi_judge_scores.csv",
                 ))
             ),
             annotation_files=tuple(resolve(str(value)) for value in annotation_values),
+            adjudication_file=resolve(
+                str(spec.get(
+                    "adjudication_file",
+                    output_dir / "adjudicator_blind.csv",
+                ))
+            ),
+            panel_judge_aliases=tuple(str(value) for value in spec.get(
+                "panel_judge_aliases",
+                [
+                    "gpt5_1_rubric_v3",
+                    "claude_sonnet_4_6_rubric_v3",
+                    "gemini_3_5_flash_rubric_v3_batch10",
+                ],
+            )),
             target_modes=tuple(str(value) for value in spec.get(
                 "target_modes",
                 ["raw_pre_answer", "mapping_balanced_direction", "label_only_direction"],
@@ -115,6 +143,10 @@ class ValidityControlsConfig:
             )),
             required_multipliers=required_multipliers,
             judge_sample_per_model_behavior=int(spec.get("judge_sample_per_model_behavior", 10)),
+            judge_pair_items_across_models=bool(
+                spec.get("judge_pair_items_across_models", False)
+            ),
+            adjudication_score_gap=adjudication_score_gap,
             minimum_base_gap=float(spec.get("minimum_base_gap", 0.05)),
             n_boot=int(statistics.get("n_boot", 5_000)),
             confidence=confidence,
@@ -735,24 +767,77 @@ def prepare_judge_validation(config: ValidityControlsConfig) -> dict[str, pd.Dat
     rng = np.random.default_rng(config.seed)
     selected: list[pd.DataFrame] = []
     inventory: list[dict[str, Any]] = []
-    for (model_alias, behavior), group in judgments.groupby(["model_alias", "behavior"], sort=True):
-        multiplier_sets = group.groupby("item_id")["multiplier"].agg(lambda values: set(values))
-        eligible = sorted(
-            item_id for item_id, values in multiplier_sets.items()
-            if set(config.required_multipliers).issubset(values)
-        )
-        n_select = min(config.judge_sample_per_model_behavior, len(eligible))
-        chosen = sorted(rng.choice(eligible, size=n_select, replace=False).tolist()) if n_select else []
-        selected.append(group[group["item_id"].isin(chosen)].copy())
-        inventory.append(
-            {
-                "model_alias": model_alias,
-                "behavior": behavior,
-                "n_eligible_items": len(eligible),
-                "n_sampled_items": n_select,
-                "n_sampled_responses": n_select * len(config.required_multipliers),
-            }
-        )
+    if config.judge_pair_items_across_models:
+        model_aliases = tuple(sorted(judgments["model_alias"].astype(str).unique()))
+        required = set(config.required_multipliers)
+        for behavior, group in judgments.groupby("behavior", sort=True):
+            complete_by_model = {}
+            for model_alias, model_group in group.groupby("model_alias", sort=True):
+                multiplier_sets = model_group.groupby("item_id")["multiplier"].agg(
+                    lambda values: set(values)
+                )
+                complete_by_model[str(model_alias)] = {
+                    str(item_id)
+                    for item_id, values in multiplier_sets.items()
+                    if required.issubset(values)
+                }
+            eligible = sorted(
+                set.intersection(
+                    *(complete_by_model.get(alias, set()) for alias in model_aliases)
+                )
+            )
+            n_select = min(config.judge_sample_per_model_behavior, len(eligible))
+            chosen = (
+                sorted(rng.choice(eligible, size=n_select, replace=False).tolist())
+                if n_select
+                else []
+            )
+            selected.append(group[group["item_id"].astype(str).isin(chosen)].copy())
+            inventory.append(
+                {
+                    "model_alias": "__paired_across_models__",
+                    "behavior": behavior,
+                    "n_models": len(model_aliases),
+                    "n_eligible_items": len(eligible),
+                    "n_sampled_items": n_select,
+                    "n_sampled_responses": (
+                        n_select * len(model_aliases) * len(config.required_multipliers)
+                    ),
+                    "sampling_unit": "behavior_item_block_shared_across_models",
+                }
+            )
+    else:
+        for (model_alias, behavior), group in judgments.groupby(
+            ["model_alias", "behavior"], sort=True
+        ):
+            multiplier_sets = group.groupby("item_id")["multiplier"].agg(
+                lambda values: set(values)
+            )
+            eligible = sorted(
+                item_id
+                for item_id, values in multiplier_sets.items()
+                if set(config.required_multipliers).issubset(values)
+            )
+            n_select = min(config.judge_sample_per_model_behavior, len(eligible))
+            chosen = (
+                sorted(rng.choice(eligible, size=n_select, replace=False).tolist())
+                if n_select
+                else []
+            )
+            selected.append(group[group["item_id"].isin(chosen)].copy())
+            inventory.append(
+                {
+                    "model_alias": model_alias,
+                    "behavior": behavior,
+                    "n_models": 1,
+                    "n_eligible_items": len(eligible),
+                    "n_sampled_items": n_select,
+                    "n_sampled_responses": (
+                        n_select * len(config.required_multipliers)
+                    ),
+                    "sampling_unit": "model_behavior_item_block",
+                }
+            )
     sample = pd.concat(selected, ignore_index=True, sort=False) if selected else pd.DataFrame()
     if sample.empty:
         raise ValueError("No complete model-behavior-multiplier groups are available for judge validation")
@@ -771,7 +856,10 @@ def prepare_judge_validation(config: ValidityControlsConfig) -> dict[str, pd.Dat
     form_columns = ["annotation_id", "behavior", "rubric", "question", "response"]
     base_form = sample[form_columns].copy()
     base_form["human_score"] = np.nan
-    base_form["human_notes"] = ""
+    base_form["evidence_span"] = ""
+    base_form["confidence"] = ""
+    base_form["uncertainty_reason"] = ""
+    base_form["adjudication_flag"] = ""
     config.output_dir.mkdir(parents=True, exist_ok=True)
     for annotator_index, path in enumerate(config.annotation_files):
         if path.exists():
@@ -779,7 +867,22 @@ def prepare_judge_validation(config: ValidityControlsConfig) -> dict[str, pd.Dat
             if "human_score" in existing and existing["human_score"].notna().any():
                 continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        shuffled = base_form.sample(frac=1.0, random_state=config.seed + annotator_index + 1)
+        ordering = sample[["behavior", "item_id"]].copy()
+        ordering["block_id"] = (
+            ordering["behavior"].astype(str) + "|" + ordering["item_id"].astype(str)
+        )
+        ordering["_within_block"] = ordering.groupby("block_id", sort=True).cumcount()
+        ordering["_random"] = np.random.default_rng(
+            config.seed + annotator_index + 1
+        ).random(len(ordering))
+        shuffled = (
+            base_form.assign(
+                _within_block=ordering["_within_block"].to_numpy(),
+                _random=ordering["_random"].to_numpy(),
+            )
+            .sort_values(["_within_block", "_random"])
+            .drop(columns=["_within_block", "_random"])
+        )
         shuffled.to_csv(path, index=False)
     tables = {
         "judge_validation_sample_key": key,
@@ -787,7 +890,8 @@ def prepare_judge_validation(config: ValidityControlsConfig) -> dict[str, pd.Dat
         "judge_validation_instructions": pd.DataFrame([
             {
                 "instruction": (
-                    "Two annotators independently fill human_score with a number from 0 to 10. "
+                    "Two annotators independently fill human_score (integer 0-10), "
+                    "evidence_span, confidence, and uncertainty_reason. "
                     "Do not change annotation_id, behavior, rubric, question, or response. "
                     "Annotators must not inspect judge_validation_sample_key.csv before scoring."
                 ),
@@ -849,6 +953,137 @@ def _bootstrap_mean(values: np.ndarray, *, n_boot: int, confidence: float, rng: 
     return float(values.mean()), float(np.quantile(estimates, tail)), float(np.quantile(estimates, 1.0 - tail))
 
 
+def _merge_panel_scores(
+    scored_rows: pd.DataFrame,
+    config: ValidityControlsConfig,
+) -> tuple[pd.DataFrame, list[str]]:
+    if not config.published_caa_multi_judge_scores.exists():
+        return scored_rows, []
+    panel = _read_required(
+        config.published_caa_multi_judge_scores,
+        {"model_alias", "behavior", "item_id", "multiplier", "judge_alias", "judge_score"},
+    )
+    aliases = [
+        alias
+        for alias in config.panel_judge_aliases
+        if alias in set(panel["judge_alias"].astype(str))
+    ]
+    if not aliases:
+        return scored_rows, []
+    panel = panel[panel["judge_alias"].astype(str).isin(aliases)].copy()
+    panel["judge_score"] = pd.to_numeric(panel["judge_score"], errors="coerce")
+    panel["multiplier"] = pd.to_numeric(panel["multiplier"], errors="coerce")
+    key_columns = ["model_alias", "behavior", "item_id", "multiplier", "judge_alias"]
+    duplicates = panel.duplicated(key_columns, keep=False)
+    if duplicates.any():
+        example = panel.loc[duplicates, key_columns].head(3).to_dict("records")
+        raise ValueError(f"Multi-judge scores contain duplicate keys: {example}")
+    wide = panel.pivot(
+        index=["model_alias", "behavior", "item_id", "multiplier"],
+        columns="judge_alias",
+        values="judge_score",
+    ).reset_index()
+    for alias in aliases:
+        if alias not in wide:
+            wide[alias] = np.nan
+    wide["three_judge_panel_score"] = wide[aliases].mean(axis=1)
+    wide.loc[wide[aliases].isna().any(axis=1), "three_judge_panel_score"] = np.nan
+    merged = scored_rows.merge(
+        wide[
+            ["model_alias", "behavior", "item_id", "multiplier"]
+            + aliases
+            + ["three_judge_panel_score"]
+        ],
+        on=["model_alias", "behavior", "item_id", "multiplier"],
+        how="left",
+        validate="one_to_one",
+    )
+    return merged, aliases
+
+
+def _paired_effect_table(
+    scored_rows: pd.DataFrame,
+    config: ValidityControlsConfig,
+    score_columns: dict[str, str],
+    *,
+    seed_offset: int,
+) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    rng = np.random.default_rng(config.seed + seed_offset)
+    for (model_alias, model_name, behavior), group in scored_rows.groupby(
+        ["model_alias", "model_name", "behavior"], sort=True
+    ):
+        pivots = {
+            source: group.pivot_table(
+                index="item_id",
+                columns="multiplier",
+                values=column,
+                aggfunc="first",
+            )
+            for source, column in score_columns.items()
+            if column in group
+        }
+        for multiplier in config.required_multipliers:
+            if multiplier == 0.0:
+                continue
+            valid_pivots = {
+                source: pivot
+                for source, pivot in pivots.items()
+                if multiplier in pivot and 0.0 in pivot
+            }
+            if not valid_pivots:
+                continue
+            item_ids: pd.Index | None = None
+            for pivot in valid_pivots.values():
+                available = pivot[[0.0, multiplier]].dropna().index
+                item_ids = available if item_ids is None else item_ids.intersection(available)
+            if item_ids is None:
+                continue
+            for source, pivot in valid_pivots.items():
+                values = (
+                    pivot.loc[item_ids, multiplier] - pivot.loc[item_ids, 0.0]
+                ).to_numpy(dtype=float)
+                estimate, low, high = _bootstrap_mean(
+                    values,
+                    n_boot=config.n_boot,
+                    confidence=config.confidence,
+                    rng=rng,
+                )
+                verdict = "positive" if low > 0 else "negative" if high < 0 else "inconclusive"
+                rows.append({
+                    "model_alias": model_alias,
+                    "model_name": model_name,
+                    "behavior": behavior,
+                    "multiplier": multiplier,
+                    "score_source": source,
+                    "n_paired_items": len(values),
+                    "paired_effect": estimate,
+                    "ci_low": low,
+                    "ci_high": high,
+                    "verdict": verdict,
+                })
+    return pd.DataFrame(rows)
+
+
+def _verdict_agreement_table(
+    paired: pd.DataFrame,
+    *,
+    human_source: str,
+    judge_source: str,
+) -> pd.DataFrame:
+    if paired.empty:
+        return pd.DataFrame()
+    verdict = paired.pivot_table(
+        index=["model_alias", "model_name", "behavior", "multiplier"],
+        columns="score_source",
+        values="verdict",
+        aggfunc="first",
+    ).reset_index()
+    if {human_source, judge_source}.issubset(verdict.columns):
+        verdict["verdict_agrees"] = verdict[human_source].eq(verdict[judge_source])
+    return verdict
+
+
 def summarize_judge_validation(config: ValidityControlsConfig) -> dict[str, pd.DataFrame]:
     key_path = config.output_dir / "judge_validation_sample_key.csv"
     key = _read_required(
@@ -861,11 +1096,58 @@ def summarize_judge_validation(config: ValidityControlsConfig) -> dict[str, pd.D
         if not path.exists():
             status_rows.append({"annotator": index, "file": str(path), "status": "missing", "n_scored": 0})
             continue
-        frame = _read_required(path, {"annotation_id", "human_score"})
+        frame = _read_required(
+            path,
+            {
+                "annotation_id",
+                "human_score",
+                "evidence_span",
+                "confidence",
+                "uncertainty_reason",
+                "adjudication_flag",
+            },
+        )
+        if frame["annotation_id"].duplicated().any():
+            raise ValueError(f"{path} contains duplicate annotation_id values")
+        unknown_ids = sorted(set(frame["annotation_id"]) - set(key["annotation_id"]))
+        missing_ids = sorted(set(key["annotation_id"]) - set(frame["annotation_id"]))
+        if unknown_ids or missing_ids:
+            raise ValueError(
+                f"{path} annotation IDs do not match the private key; "
+                f"unknown={unknown_ids[:3]}, missing={missing_ids[:3]}"
+            )
         frame["human_score"] = pd.to_numeric(frame["human_score"], errors="coerce")
         invalid = frame["human_score"].notna() & ~frame["human_score"].between(0.0, 10.0)
         if invalid.any():
             raise ValueError(f"{path} contains human_score values outside [0, 10]")
+        noninteger = frame["human_score"].notna() & ~np.isclose(
+            frame["human_score"], np.rint(frame["human_score"])
+        )
+        if noninteger.any():
+            raise ValueError(f"{path} contains non-integer human_score values")
+        evidence = frame["evidence_span"].fillna("").astype(str).str.strip()
+        missing_evidence = frame["human_score"].notna() & evidence.eq("")
+        if missing_evidence.any():
+            raise ValueError(
+                f"{path} has scored rows without evidence_span"
+            )
+        if "confidence" in frame:
+            normalized_confidence = frame["confidence"].fillna("").astype(str).str.strip().str.lower()
+            scored = frame["human_score"].notna()
+            invalid_confidence = scored & ~normalized_confidence.isin(
+                ["high", "medium", "low"]
+            )
+            if invalid_confidence.any():
+                raise ValueError(
+                    f"{path} must use high, medium, or low confidence for every scored row"
+                )
+            if "uncertainty_reason" in frame:
+                reasons = frame["uncertainty_reason"].fillna("").astype(str).str.strip()
+                missing_reason = scored & normalized_confidence.eq("low") & reasons.eq("")
+                if missing_reason.any():
+                    raise ValueError(
+                        f"{path} has low-confidence rows without uncertainty_reason"
+                    )
         score_name = f"human_score_{index}"
         annotations.append(frame[["annotation_id", "human_score"]].rename(columns={"human_score": score_name}))
         status_rows.append({
@@ -885,6 +1167,7 @@ def summarize_judge_validation(config: ValidityControlsConfig) -> dict[str, pd.D
     if complete.empty:
         return {"judge_validation_status": status, "judge_validation_scored_rows": merged}
     complete["human_mean_score"] = complete[["human_score_1", "human_score_2"]].mean(axis=1)
+    complete, panel_aliases = _merge_panel_scores(complete, config)
 
     agreement_rows = [
         _agreement_record("human_1_vs_human_2", complete["human_score_1"], complete["human_score_2"]),
@@ -895,49 +1178,52 @@ def summarize_judge_validation(config: ValidityControlsConfig) -> dict[str, pd.D
             f"llm_judge_vs_human_mean:{behavior}", group["judge_score"], group["human_mean_score"]
         )
         agreement_rows.append(record)
-
-    paired_rows: list[dict[str, Any]] = []
-    rng = np.random.default_rng(config.seed + 500)
-    for (model_alias, model_name, behavior), group in complete.groupby(
-        ["model_alias", "model_name", "behavior"], sort=True
-    ):
-        pivot_human = group.pivot_table(index="item_id", columns="multiplier", values="human_mean_score", aggfunc="first")
-        pivot_llm = group.pivot_table(index="item_id", columns="multiplier", values="judge_score", aggfunc="first")
-        for multiplier in config.required_multipliers:
-            if multiplier == 0.0 or multiplier not in pivot_human or 0.0 not in pivot_human:
-                continue
-            item_ids = pivot_human[[0.0, multiplier]].dropna().index.intersection(
-                pivot_llm[[0.0, multiplier]].dropna().index
-            )
-            for source, pivot in (("human_mean", pivot_human), ("llm_judge", pivot_llm)):
-                values = (pivot.loc[item_ids, multiplier] - pivot.loc[item_ids, 0.0]).to_numpy(dtype=float)
-                estimate, low, high = _bootstrap_mean(
-                    values, n_boot=config.n_boot, confidence=config.confidence, rng=rng
+    if panel_aliases:
+        for alias in panel_aliases:
+            agreement_rows.append(
+                _agreement_record(
+                    f"{alias}_vs_human_mean",
+                    complete[alias],
+                    complete["human_mean_score"],
                 )
-                verdict = "positive" if low > 0 else "negative" if high < 0 else "inconclusive"
-                paired_rows.append({
-                    "model_alias": model_alias,
-                    "model_name": model_name,
-                    "behavior": behavior,
-                    "multiplier": multiplier,
-                    "score_source": source,
-                    "n_paired_items": len(values),
-                    "paired_effect": estimate,
-                    "ci_low": low,
-                    "ci_high": high,
-                    "verdict": verdict,
-                })
-    paired = pd.DataFrame(paired_rows)
-    verdict = pd.DataFrame()
-    if not paired.empty:
-        verdict = paired.pivot_table(
-            index=["model_alias", "model_name", "behavior", "multiplier"],
-            columns="score_source",
-            values="verdict",
-            aggfunc="first",
-        ).reset_index()
-        if {"human_mean", "llm_judge"}.issubset(verdict.columns):
-            verdict["verdict_agrees"] = verdict["human_mean"].eq(verdict["llm_judge"])
+            )
+        agreement_rows.append(
+            _agreement_record(
+                "three_judge_panel_vs_human_mean",
+                complete["three_judge_panel_score"],
+                complete["human_mean_score"],
+            )
+        )
+        for behavior, group in complete.groupby("behavior", sort=True):
+            agreement_rows.append(
+                _agreement_record(
+                    f"three_judge_panel_vs_human_mean:{behavior}",
+                    group["three_judge_panel_score"],
+                    group["human_mean_score"],
+                )
+            )
+    score_columns = {
+        "human_mean": "human_mean_score",
+        "llm_judge": "judge_score",
+    }
+    if "three_judge_panel_score" in complete:
+        score_columns["three_judge_panel"] = "three_judge_panel_score"
+    paired = _paired_effect_table(
+        complete,
+        config,
+        score_columns,
+        seed_offset=500,
+    )
+    judge_source = (
+        "three_judge_panel"
+        if "three_judge_panel" in set(paired.get("score_source", pd.Series(dtype=str)))
+        else "llm_judge"
+    )
+    verdict = _verdict_agreement_table(
+        paired,
+        human_source="human_mean",
+        judge_source=judge_source,
+    )
     return {
         "judge_validation_status": status,
         "judge_validation_scored_rows": complete,
@@ -945,6 +1231,386 @@ def summarize_judge_validation(config: ValidityControlsConfig) -> dict[str, pd.D
         "judge_validation_paired_effects": paired,
         "judge_validation_verdict_agreement": verdict,
     }
+
+
+def _adjudication_candidates(
+    config: ValidityControlsConfig,
+    summary: dict[str, pd.DataFrame],
+) -> pd.DataFrame:
+    scored = summary.get("judge_validation_scored_rows", pd.DataFrame()).copy()
+    if scored.empty:
+        raise ValueError("Two complete annotation forms are required before adjudication")
+    forms: list[pd.DataFrame] = []
+    detail_columns = [
+        "annotation_id",
+        "rubric",
+        "question",
+        "response",
+        "human_score",
+        "evidence_span",
+        "confidence",
+        "uncertainty_reason",
+        "adjudication_flag",
+    ]
+    for index, path in enumerate(config.annotation_files, start=1):
+        frame = _read_required(path, detail_columns)
+        renamed = {
+            column: f"{column}_{index}"
+            for column in detail_columns
+            if column not in {
+                "annotation_id",
+                "rubric",
+                "question",
+                "response",
+                "human_score",
+            }
+        }
+        static = ["annotation_id"]
+        if index == 1:
+            static += ["rubric", "question", "response"]
+        forms.append(frame[static + list(renamed)].rename(columns=renamed))
+    candidates = scored.merge(forms[0], on="annotation_id", how="left", validate="one_to_one")
+    candidates = candidates.merge(forms[1], on="annotation_id", how="left", validate="one_to_one")
+    candidates["absolute_score_gap"] = (
+        candidates["human_score_1"] - candidates["human_score_2"]
+    ).abs()
+    candidates["absence_substantial_conflict"] = (
+        (candidates["human_score_1"].le(2) & candidates["human_score_2"].ge(6))
+        | (candidates["human_score_2"].le(2) & candidates["human_score_1"].ge(6))
+    )
+    flag_1 = (
+        candidates["adjudication_flag_1"].fillna("").astype(str).str.strip().str.lower().eq("yes")
+    )
+    flag_2 = (
+        candidates["adjudication_flag_2"].fillna("").astype(str).str.strip().str.lower().eq("yes")
+    )
+    candidates["annotator_flag"] = flag_1 | flag_2
+    selected = (
+        candidates["absolute_score_gap"].ge(config.adjudication_score_gap)
+        | candidates["absence_substantial_conflict"]
+        | candidates["annotator_flag"]
+    )
+    candidates = candidates.loc[selected].copy()
+
+    def reasons(row: pd.Series) -> str:
+        values = []
+        if row["absolute_score_gap"] >= config.adjudication_score_gap:
+            values.append(f"score_gap>={config.adjudication_score_gap}")
+        if bool(row["absence_substantial_conflict"]):
+            values.append("absence_vs_substantial")
+        if bool(row["annotator_flag"]):
+            values.append("annotator_flag")
+        return ";".join(values)
+
+    candidates["adjudication_trigger"] = candidates.apply(reasons, axis=1)
+    return candidates.sort_values(["behavior", "annotation_id"]).reset_index(drop=True)
+
+
+def prepare_human_adjudication(
+    config: ValidityControlsConfig,
+) -> dict[str, pd.DataFrame]:
+    summary = summarize_judge_validation(config)
+    candidates = _adjudication_candidates(config, summary)
+    inventory = (
+        candidates.groupby("behavior", as_index=False)
+        .agg(
+            n_adjudication_rows=("annotation_id", "size"),
+            mean_absolute_score_gap=("absolute_score_gap", "mean"),
+            max_absolute_score_gap=("absolute_score_gap", "max"),
+        )
+        if not candidates.empty
+        else pd.DataFrame(columns=[
+            "behavior",
+            "n_adjudication_rows",
+            "mean_absolute_score_gap",
+            "max_absolute_score_gap",
+        ])
+    )
+    inventory = pd.concat(
+        [
+            inventory,
+            pd.DataFrame([{
+                "behavior": "__all__",
+                "n_adjudication_rows": len(candidates),
+                "mean_absolute_score_gap": candidates["absolute_score_gap"].mean(),
+                "max_absolute_score_gap": candidates["absolute_score_gap"].max(),
+            }]),
+        ],
+        ignore_index=True,
+    )
+    key_columns = [
+        "annotation_id",
+        "model_alias",
+        "model_name",
+        "behavior",
+        "item_id",
+        "multiplier",
+        "human_score_1",
+        "human_score_2",
+        "evidence_span_1",
+        "evidence_span_2",
+        "confidence_1",
+        "confidence_2",
+        "absolute_score_gap",
+        "absence_substantial_conflict",
+        "annotator_flag",
+        "adjudication_trigger",
+    ]
+    private_key = candidates[key_columns].copy()
+    rng = np.random.default_rng(config.seed + 701)
+    swap = rng.random(len(candidates)) < 0.5
+    blind = candidates[
+        ["annotation_id", "behavior", "rubric", "question", "response", "adjudication_trigger"]
+    ].copy()
+    blind["candidate_score_a"] = np.where(
+        swap, candidates["human_score_2"], candidates["human_score_1"]
+    )
+    blind["candidate_evidence_a"] = np.where(
+        swap, candidates["evidence_span_2"], candidates["evidence_span_1"]
+    )
+    blind["candidate_score_b"] = np.where(
+        swap, candidates["human_score_1"], candidates["human_score_2"]
+    )
+    blind["candidate_evidence_b"] = np.where(
+        swap, candidates["evidence_span_1"], candidates["evidence_span_2"]
+    )
+    blind["adjudicated_score"] = np.nan
+    blind["adjudication_reason"] = ""
+    blind["confidence"] = ""
+    blind = blind.sample(frac=1.0, random_state=config.seed + 702).reset_index(drop=True)
+    config.output_dir.mkdir(parents=True, exist_ok=True)
+    if config.adjudication_file.exists():
+        existing = pd.read_csv(config.adjudication_file)
+        if (
+            "adjudicated_score" in existing
+            and pd.to_numeric(existing["adjudicated_score"], errors="coerce").notna().any()
+        ):
+            blind = existing
+        else:
+            blind.to_csv(config.adjudication_file, index=False)
+    else:
+        config.adjudication_file.parent.mkdir(parents=True, exist_ok=True)
+        blind.to_csv(config.adjudication_file, index=False)
+    instructions = pd.DataFrame([{
+        "instruction": (
+            "The adjudicator independently assigns adjudicated_score (integer 0-10) "
+            "after reviewing the response, rubric, and both anonymized evidence spans. "
+            "The adjudicator remains blind to model, multiplier, item_id, and automatic judges. "
+            "Do not change annotation_id or source text; provide adjudication_reason and confidence."
+        ),
+        "adjudication_file": str(config.adjudication_file),
+        "n_rows": len(candidates),
+    }])
+    tables = {
+        "judge_validation_adjudication_private_key": private_key,
+        "judge_validation_adjudication_inventory": inventory,
+        "judge_validation_adjudication_instructions": instructions,
+    }
+    write_tables(tables, config.output_dir)
+    return tables
+
+
+def summarize_human_adjudication(
+    config: ValidityControlsConfig,
+) -> dict[str, pd.DataFrame]:
+    base = summarize_judge_validation(config)
+    candidates = _adjudication_candidates(config, base)
+    if not config.adjudication_file.exists():
+        raise FileNotFoundError(
+            f"Missing adjudication form: {config.adjudication_file}. "
+            "Run prepare-caa-human-adjudication first."
+        )
+    adjudication = _read_required(
+        config.adjudication_file,
+        {
+            "annotation_id",
+            "adjudicated_score",
+            "adjudication_reason",
+            "confidence",
+        },
+    )
+    if adjudication["annotation_id"].duplicated().any():
+        raise ValueError(f"{config.adjudication_file} contains duplicate annotation_id values")
+    expected = set(candidates["annotation_id"])
+    observed = set(adjudication["annotation_id"])
+    if expected != observed:
+        raise ValueError(
+            "Adjudication IDs do not match current trigger rows; "
+            f"unknown={sorted(observed - expected)[:3]}, missing={sorted(expected - observed)[:3]}"
+        )
+    adjudication["adjudicated_score"] = pd.to_numeric(
+        adjudication["adjudicated_score"], errors="coerce"
+    )
+    scored = adjudication["adjudicated_score"].notna()
+    invalid = scored & ~adjudication["adjudicated_score"].between(0.0, 10.0)
+    noninteger = scored & ~np.isclose(
+        adjudication["adjudicated_score"],
+        np.rint(adjudication["adjudicated_score"]),
+    )
+    if invalid.any() or noninteger.any():
+        raise ValueError("adjudicated_score must be an integer in [0, 10]")
+    reasons = adjudication["adjudication_reason"].fillna("").astype(str).str.strip()
+    confidence = adjudication["confidence"].fillna("").astype(str).str.strip().str.lower()
+    if (scored & reasons.eq("")).any():
+        raise ValueError("Every adjudicated row must include adjudication_reason")
+    if (scored & ~confidence.isin(["high", "medium", "low"])).any():
+        raise ValueError("Every adjudicated row must use high, medium, or low confidence")
+    status = pd.DataFrame([{
+        "file": str(config.adjudication_file),
+        "status": "complete" if scored.all() else "partial",
+        "n_scored": int(scored.sum()),
+        "n_expected": len(candidates),
+    }])
+    tables = dict(base)
+    tables["judge_validation_adjudication_status"] = status
+    if not scored.all():
+        return tables
+    final = base["judge_validation_scored_rows"].merge(
+        adjudication[
+            ["annotation_id", "adjudicated_score", "adjudication_reason", "confidence"]
+        ].rename(columns={"confidence": "adjudication_confidence"}),
+        on="annotation_id",
+        how="left",
+        validate="one_to_one",
+    )
+    final["human_final_score"] = final["adjudicated_score"].fillna(
+        final["human_mean_score"]
+    )
+    final["human_score_source"] = np.where(
+        final["adjudicated_score"].notna(),
+        "adjudicated",
+        "two_annotator_mean",
+    )
+    agreement_rows = [
+        _agreement_record(
+            "human_final_vs_human_mean",
+            final["human_final_score"],
+            final["human_mean_score"],
+        )
+    ]
+    if "three_judge_panel_score" in final:
+        agreement_rows.append(
+            _agreement_record(
+                "three_judge_panel_vs_human_final",
+                final["three_judge_panel_score"],
+                final["human_final_score"],
+            )
+        )
+        for behavior, group in final.groupby("behavior", sort=True):
+            agreement_rows.append(
+                _agreement_record(
+                    f"three_judge_panel_vs_human_final:{behavior}",
+                    group["three_judge_panel_score"],
+                    group["human_final_score"],
+                )
+            )
+    score_columns = {"human_final": "human_final_score"}
+    if "three_judge_panel_score" in final:
+        score_columns["three_judge_panel"] = "three_judge_panel_score"
+    else:
+        score_columns["llm_judge"] = "judge_score"
+    paired = _paired_effect_table(
+        final,
+        config,
+        score_columns,
+        seed_offset=800,
+    )
+    judge_source = (
+        "three_judge_panel"
+        if "three_judge_panel" in set(paired.get("score_source", pd.Series(dtype=str)))
+        else "llm_judge"
+    )
+    tables.update({
+        "judge_validation_final_scored_rows": final,
+        "judge_validation_final_agreement": pd.DataFrame(agreement_rows),
+        "judge_validation_final_paired_effects": paired,
+        "judge_validation_final_verdict_agreement": _verdict_agreement_table(
+            paired,
+            human_source="human_final",
+            judge_source=judge_source,
+        ),
+    })
+    return tables
+
+
+def prepare_caa_human_annotation_from_json(
+    config_path: str | Path,
+    *,
+    project_root: str | Path | None = None,
+) -> dict[str, pd.DataFrame]:
+    config = ValidityControlsConfig.from_json(config_path, project_root=project_root)
+    return prepare_judge_validation(config)
+
+
+def run_evaluation_validity_controls_from_json(
+    config_path: str | Path,
+    *,
+    project_root: str | Path | None = None,
+    model_source_overrides: dict[str, str] | None = None,
+    model_aliases: Iterable[str] | None = None,
+    phase: str = "all",
+) -> dict[str, pd.DataFrame]:
+    from .cross_interface_audit import (
+        CrossInterfaceConfig,
+        aggregate_cross_interface_outputs,
+        run_cross_interface_audit_from_json,
+    )
+
+    allowed = {"random", "prepare-judge", "summarize", "all"}
+    if phase not in allowed:
+        raise ValueError(f"Unsupported phase {phase!r}; expected {sorted(allowed)}")
+    tables: dict[str, pd.DataFrame] = {}
+    if phase in {"random", "all"}:
+        result = run_cross_interface_audit_from_json(
+            config_path,
+            project_root=project_root,
+            model_source_overrides=model_source_overrides,
+            model_aliases=model_aliases,
+        )
+        tables.update({f"random_audit__{key}": value for key, value in result.items()})
+    config = ValidityControlsConfig.from_json(config_path, project_root=project_root)
+    if phase in {"prepare-judge", "all"}:
+        tables.update(prepare_judge_validation(config))
+    if phase in {"summarize", "all"}:
+        random_config = CrossInterfaceConfig.from_json(
+            config_path,
+            project_root=project_root,
+            model_source_overrides=model_source_overrides,
+        )
+        aggregate_cross_interface_outputs(random_config)
+        tables.update(run_validity_control_synthesis(config))
+    return tables
+
+
+def summarize_caa_human_annotation_from_json(
+    config_path: str | Path,
+    *,
+    project_root: str | Path | None = None,
+) -> dict[str, pd.DataFrame]:
+    config = ValidityControlsConfig.from_json(config_path, project_root=project_root)
+    tables = summarize_judge_validation(config)
+    write_tables(tables, config.output_dir)
+    return tables
+
+
+def prepare_caa_human_adjudication_from_json(
+    config_path: str | Path,
+    *,
+    project_root: str | Path | None = None,
+) -> dict[str, pd.DataFrame]:
+    config = ValidityControlsConfig.from_json(config_path, project_root=project_root)
+    return prepare_human_adjudication(config)
+
+
+def summarize_caa_human_adjudication_from_json(
+    config_path: str | Path,
+    *,
+    project_root: str | Path | None = None,
+) -> dict[str, pd.DataFrame]:
+    config = ValidityControlsConfig.from_json(config_path, project_root=project_root)
+    tables = summarize_human_adjudication(config)
+    write_tables(tables, config.output_dir)
+    return tables
 
 
 def run_validity_control_synthesis(
@@ -961,47 +1627,4 @@ def run_validity_control_synthesis(
     if include_judge and (config.output_dir / "judge_validation_sample_key.csv").exists():
         tables.update(summarize_judge_validation(config))
     write_tables(tables, config.output_dir)
-    return tables
-
-
-def run_evaluation_validity_controls_from_json(
-    config_path: str | Path,
-    *,
-    project_root: str | Path | None = None,
-    model_source_overrides: dict[str, str] | None = None,
-    model_aliases: list[str] | None = None,
-    phase: str = "all",
-) -> dict[str, pd.DataFrame]:
-    """Run random controls, prepare judge forms, or summarize validity checks."""
-    from .cross_interface_audit import (
-        CrossInterfaceConfig,
-        aggregate_cross_interface_outputs,
-        run_cross_interface_audit_from_json,
-    )
-
-    allowed = {"random", "prepare-judge", "summarize", "all"}
-    if phase not in allowed:
-        raise ValueError(f"Unsupported validity-control phase {phase!r}")
-
-    tables: dict[str, pd.DataFrame] = {}
-    if phase in {"random", "all"}:
-        outputs = run_cross_interface_audit_from_json(
-            config_path,
-            project_root=project_root,
-            model_source_overrides=model_source_overrides,
-            model_aliases=model_aliases,
-        )
-        tables.update({f"random_audit__{key}": value for key, value in outputs.items()})
-
-    config = ValidityControlsConfig.from_json(config_path, project_root=project_root)
-    if phase in {"prepare-judge", "all"}:
-        tables.update(prepare_judge_validation(config))
-    if phase in {"summarize", "all"}:
-        random_config = CrossInterfaceConfig.from_json(
-            config_path,
-            project_root=project_root,
-            model_source_overrides=model_source_overrides,
-        )
-        aggregate_cross_interface_outputs(random_config)
-        tables.update(run_validity_control_synthesis(config))
     return tables

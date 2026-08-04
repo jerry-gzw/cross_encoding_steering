@@ -1,0 +1,25 @@
+{
+  "base_config": "normbank_group_disjoint_six_letter_base.example.json",
+  "output_dir": "outputs/normbank/readout_baseline",
+  "dataset": {
+    "max_test_pairs_per_contrast": 128
+  },
+  "readout_baselines": {
+    "source_readout_dir": "outputs/normbank/readout_geometry",
+    "normalize_gradient_rows": true,
+    "enabled_modes": [
+      "mean_local_gradient_norm_matched",
+      "rank1_local_gradient_norm_matched",
+      "unembedding_difference_norm_matched"
+    ],
+    "reference_modes": [
+      "raw_canonical_direction",
+      "readout_projection_norm_matched"
+    ]
+  },
+  "statistics": {
+    "n_boot": 5000,
+    "n_permutations": 10000,
+    "confidence": 0.95
+  }
+}

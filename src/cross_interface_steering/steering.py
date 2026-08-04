@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gc
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -48,6 +49,12 @@ def model_alias(model_name: str) -> str:
 
 
 def load_tokenizer_and_model(model_name: str, *, device_map: str = "auto", torch_dtype: str = "auto") -> tuple[Any, Any]:
+    # This package is PyTorch-only. Prevent Transformers from importing an
+    # unrelated TensorFlow installation, which may be ABI-incompatible with
+    # the NumPy version used by the experiment environment.
+    os.environ.setdefault("USE_TF", "0")
+    os.environ.setdefault("USE_FLAX", "0")
+    os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 

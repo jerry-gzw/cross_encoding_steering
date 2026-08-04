@@ -1,0 +1,10 @@
+scope,metric,mean,ci_low,ci_high,n_pairs,n_groups,n_model_contrast_strata,selection_uses_steered_outcomes
+canonical_both_endpoints_correct,semantic_margin_gain,0.9844925749226712,0.9696875626718766,0.999064438302164,666,483,12,False
+canonical_both_endpoints_correct,extraction_identifier_margin_gain,1.4297628573914654,1.42125057514015,1.438280047426877,666,483,12,False
+canonical_both_endpoints_correct,identifier_minus_semantics,0.445270282468794,0.4309679542256231,0.4604446245789678,666,483,12,False
+all_six_abc_both_endpoints_correct,semantic_margin_gain,1.0290343413476686,1.0116060888159213,1.0470891071519408,309,256,12,False
+all_six_abc_both_endpoints_correct,extraction_identifier_margin_gain,1.4551211498776295,1.4433464856966332,1.4670389829732604,309,256,12,False
+all_six_abc_both_endpoints_correct,identifier_minus_semantics,0.4260868085299611,0.4084744535429572,0.4428243877219976,309,256,12,False
+all_six_abc_high_confidence,semantic_margin_gain,1.0300166534805415,1.006604443164331,1.1090075637726944,175,157,12,False
+all_six_abc_high_confidence,extraction_identifier_margin_gain,1.455560206399796,1.4384404832219402,1.4783946682834728,175,157,12,False
+all_six_abc_high_confidence,identifier_minus_semantics,0.4255435529192545,0.3443597765168706,0.4466683156019124,175,157,12,False

@@ -56,7 +56,7 @@ class ContextDiscriminationConfig:
             raise ValueError("statistics.n_boot must be at least 100")
         return cls(
             project_root=root,
-            output_dir=resolve(str(data.get("output_dir", "outputs/normbank/context_selectivity"))),
+            output_dir=resolve(str(data.get("output_dir", "outputs/context_discrimination"))),
             input_dirs=tuple(resolve(str(value)) for value in data.get("input_dirs", [])),
             optional_input_dirs=tuple(resolve(str(value)) for value in data.get("optional_input_dirs", [])),
             modes=tuple(str(value) for value in data.get("modes", [])),

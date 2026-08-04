@@ -58,6 +58,7 @@ def _load_mapping_audit_config(config_path: Path) -> dict[str, Any]:
 
 PAPER_MODES = [
     "raw_canonical_direction",
+    "raw_position_norm_matched",
     "shared_canonical_direction",
     "residual_canonical_direction",
     "loco_shared_canonical_direction",
@@ -241,7 +242,7 @@ class FixedDirectionMappingAuditConfig:
         if not enabled_modes:
             raise ValueError("enabled_modes must contain at least one direction mode")
         output_dir = resolve(
-            str(data.get("output_dir", "outputs/normbank/base_mapping_audit"))
+            str(data.get("output_dir", "outputs/fixed_direction_mapping_audit"))
         )
         return cls(
             project_root=root,

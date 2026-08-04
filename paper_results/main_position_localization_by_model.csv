@@ -1,0 +1,17 @@
+model_alias,mean_extraction_identifier_gain,mean_js_shift,condition,condition_label,model_label
+gemma2_9b_it,0.18855389131543535,0.09324489362715904,pre_answer_raw,Pre-answer raw,Gemma
+llama3_1_8b_instruct,0.16421997944513952,0.03239601527518813,pre_answer_raw,Pre-answer raw,Llama
+mistral7b_instruct_v03,0.3495533981098561,0.195475230800137,pre_answer_raw,Pre-answer raw,Mistral
+qwen2_5_7b_instruct,0.17000795030285565,0.128432284169887,pre_answer_raw,Pre-answer raw,Qwen
+gemma2_9b_it,0.023143231527258928,0.006971883982024503,scenario_end_raw,Scenario-end raw,Gemma
+llama3_1_8b_instruct,-0.04800101537257429,0.008203848587747796,scenario_end_raw,Scenario-end raw,Llama
+mistral7b_instruct_v03,0.04468833632096596,0.01096623980130503,scenario_end_raw,Scenario-end raw,Mistral
+qwen2_5_7b_instruct,-0.004869805406500906,0.012010047865800516,scenario_end_raw,Scenario-end raw,Qwen
+gemma2_9b_it,0.011254163509389977,0.0016627111613275265,scenario_end_norm_matched,Scenario-end norm matched,Gemma
+llama3_1_8b_instruct,-0.004516741385062493,0.0003137948429840367,scenario_end_norm_matched,Scenario-end norm matched,Llama
+mistral7b_instruct_v03,0.028968369893118462,0.004505560042037536,scenario_end_norm_matched,Scenario-end norm matched,Mistral
+qwen2_5_7b_instruct,-0.0016847809936393766,0.0019961033958939933,scenario_end_norm_matched,Scenario-end norm matched,Qwen
+gemma2_9b_it,5.97829154382e-05,0.00013425137730133332,scenario_end_transport,Scenario-end matched site,Gemma
+llama3_1_8b_instruct,-0.0003621876239776334,0.00018950771451073335,scenario_end_transport,Scenario-end matched site,Llama
+mistral7b_instruct_v03,-0.00014698627314321417,0.00020829679421866668,scenario_end_transport,Scenario-end matched site,Mistral
+qwen2_5_7b_instruct,-0.0001984098234465,0.0003555198951825333,scenario_end_transport,Scenario-end matched site,Qwen

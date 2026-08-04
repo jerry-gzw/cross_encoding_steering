@@ -1,0 +1,10 @@
+split,pair_type,n_pairs,n_groups,max_pairs_per_group
+test,normal_vs_expected,2281,993,14
+test,taboo_vs_expected,2441,1011,10
+test,taboo_vs_normal,4631,1276,40
+train,normal_vs_expected,17993,8101,46
+train,taboo_vs_expected,19634,8329,42
+train,taboo_vs_normal,38241,10320,86
+validation,normal_vs_expected,2352,1023,11
+validation,taboo_vs_expected,2477,1045,11
+validation,taboo_vs_normal,4967,1288,40

@@ -1,0 +1,2 @@
+status,n_boot,confidence,n_test_pairs,n_test_groups,n_comparisons,n_decision_agreements,all_pair_vs_group_decisions_agree,readout_pair_reference_source,note
+complete,5000,0.95,9353,1302,63,63,True,reconstructed_from_readout_pair_effects,Complete setting-behavior groups are resampled jointly across contrasts; no GPU outputs are recomputed.

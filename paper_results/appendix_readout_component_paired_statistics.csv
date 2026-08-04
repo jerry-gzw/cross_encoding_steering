@@ -1,0 +1,6 @@
+comparison,statistic,left_component,right_component,estimate,ci_low,ci_high,p_two_sided,n_pair_units,n_model_contrast_strata,inference_unit,p_holm,significant_holm
+projection_minus_residual,paired_difference,projection,residual,0.2049436803596184,0.2011064924638181,0.2087929015327368,9.999000099990002e-05,1536,12,pair_id; bootstrap within model-by-contrast strata; equal stratum weight,0.0002999700029997,True
+raw_minus_residual,paired_difference,raw,residual,0.2129676844307368,0.2090186597528168,0.2167342626526349,9.999000099990002e-05,1536,12,pair_id; bootstrap within model-by-contrast strata; equal stratum weight,0.0002999700029997,True
+projection_minus_subspace_random,paired_difference,projection,subspace_random,0.1975803918503768,0.1931231245028568,0.2019568733858833,9.999000099990002e-05,768,12,pair_id; bootstrap within model-by-contrast strata; equal stratum weight,0.0002999700029997,True
+projection_retention_ratio,ratio_of_balanced_means,projection,raw,0.9626889685262704,0.95897194725542,0.9663239912261588,,1536,12,pair_id; bootstrap within model-by-contrast strata; equal stratum weight,,False
+residual_retention_ratio,ratio_of_balanced_means,residual,raw,0.0097158592823366,0.0060196182680272,0.0132316862030575,,1536,12,pair_id; bootstrap within model-by-contrast strata; equal stratum weight,,False

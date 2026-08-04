@@ -235,7 +235,7 @@ def _config(tmp_path: Path) -> PublishedCAAAuditConfig:
     config_path.write_text(
         json.dumps(
             {
-                "output_dir": "work/audit",
+                "output_dir": "outputs/audit",
                 "protocol": {
                     "reference_repo": "datasets/CAA",
                     "behaviors": ["sycophancy", "hallucination", "refusal"],

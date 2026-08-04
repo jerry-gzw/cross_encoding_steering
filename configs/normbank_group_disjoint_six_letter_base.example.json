@@ -1,0 +1,65 @@
+{
+  "base_config": "normbank_group_disjoint_letter_permutation.example.json",
+  "mappings": [
+    {
+      "name": "canonical_taboo_normal_expected",
+      "family": "semantic_words",
+      "option_order": ["taboo", "normal", "expected"],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "permutation_taboo_expected_normal",
+      "family": "semantic_words",
+      "option_order": ["taboo", "expected", "normal"],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "permutation_normal_taboo_expected",
+      "family": "semantic_words",
+      "option_order": ["normal", "taboo", "expected"],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "permutation_normal_expected_taboo",
+      "family": "semantic_words",
+      "option_order": ["normal", "expected", "taboo"],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "permutation_expected_taboo_normal",
+      "family": "semantic_words",
+      "option_order": ["expected", "taboo", "normal"],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    },
+    {
+      "name": "reversed_expected_normal_taboo",
+      "family": "semantic_words",
+      "option_order": ["expected", "normal", "taboo"],
+      "option_texts": {
+        "taboo": "taboo - socially forbidden or unacceptable",
+        "normal": "normal - socially ordinary or acceptable",
+        "expected": "expected - socially expected or encouraged"
+      }
+    }
+  ]
+}

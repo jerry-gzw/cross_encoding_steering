@@ -274,7 +274,7 @@ class PublishedCAAAuditConfig:
         if len(aliases) != len(set(aliases)):
             raise ValueError("Every configured judge must have a unique alias")
         output_dir = _resolve_path(
-            data.get("output_dir", "outputs/published_caa"),
+            data.get("output_dir", "outputs/published_caa_protocol_audit"),
             root,
         )
         return cls(
@@ -1536,7 +1536,7 @@ def _make_judge_client(config: CAAJudgeConfig) -> Any:
         from openai import OpenAI
     except ImportError as exc:
         raise RuntimeError(
-            "OpenAI-compatible judges require the official 'openai' SDK. "
+            "GPT and DeepSeek judges require the official 'openai' SDK. "
             "Install with: pip install -e '.[judges]'"
         ) from exc
     return OpenAI(

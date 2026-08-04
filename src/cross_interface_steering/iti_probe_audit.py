@@ -1175,7 +1175,7 @@ def build_cross_method_interface_summary(
     iti_all_models: pd.DataFrame,
     iti_competent_models: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Normalize CAA and ITI bootstrap tables to one reported-results schema."""
+    """Normalize CAA and ITI bootstrap tables to one reviewer-facing schema."""
     frames = []
     if not caa_bootstrap.empty:
         caa = caa_bootstrap[

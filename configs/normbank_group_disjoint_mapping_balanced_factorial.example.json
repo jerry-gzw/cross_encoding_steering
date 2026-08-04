@@ -1,0 +1,22 @@
+{
+  "base_config": "normbank_interface_factorial.example.json",
+  "output_dir": "outputs/normbank/mapping_balanced_factorial",
+  "interface_factorial": {
+    "direction_source": "mapping_balanced",
+    "mapping_balance_mappings": [
+      "canonical_taboo_normal_expected",
+      "permutation_taboo_expected_normal",
+      "permutation_normal_taboo_expected",
+      "permutation_normal_expected_taboo",
+      "permutation_expected_taboo_normal",
+      "reversed_expected_normal_taboo"
+    ]
+  },
+  "runtime": {
+    "batch_size": 2,
+    "max_length": 512,
+    "seed": 13,
+    "continue_on_error": true,
+    "force_rerun": false
+  }
+}

@@ -16,7 +16,11 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
-from .cross_interface_audit import PromptTemplate, _build_eval_items
+from .cross_interface_audit import (
+    PromptTemplate,
+    _build_eval_items,
+    _mapping_balanced_directions,
+)
 from .io import write_tables
 from .mapping_audit import (
     FixedDirectionMappingAuditConfig,
@@ -70,6 +74,8 @@ class InterfaceFactorialConfig:
     row_orders: tuple[RowOrder, ...]
     key_templates: tuple[str, ...]
     competence_threshold: float
+    direction_source: str = "raw_canonical"
+    mapping_balance_mappings: tuple[str, ...] = ()
 
     @classmethod
     def from_json(
@@ -176,6 +182,37 @@ class InterfaceFactorialConfig:
         threshold = float(spec.get("competence_threshold", 0.8))
         if not 0.0 <= threshold <= 1.0:
             raise ValueError("interface_factorial.competence_threshold must be in [0, 1]")
+        direction_source = str(spec.get("direction_source", "raw_canonical"))
+        if direction_source not in {"raw_canonical", "mapping_balanced"}:
+            raise ValueError(
+                "interface_factorial.direction_source must be raw_canonical "
+                "or mapping_balanced"
+            )
+        mapping_balance_mappings = tuple(
+            str(value)
+            for value in spec.get(
+                "mapping_balance_mappings",
+                [mapping.name for mapping in audit.mappings],
+            )
+        )
+        unknown_balance_mappings = sorted(
+            set(mapping_balance_mappings) - set(mapping_lookup)
+        )
+        if unknown_balance_mappings:
+            raise ValueError(
+                "Unknown mapping-balance mappings: "
+                f"{unknown_balance_mappings}"
+            )
+        if direction_source == "mapping_balanced":
+            if len(mapping_balance_mappings) < 2:
+                raise ValueError(
+                    "mapping_balanced direction_source requires at least two "
+                    "mapping_balance_mappings"
+                )
+            if audit.dataset.canonical_mapping not in mapping_balance_mappings:
+                raise ValueError(
+                    "mapping_balance_mappings must include the canonical mapping"
+                )
         return cls(
             audit=audit,
             templates=templates,
@@ -184,6 +221,16 @@ class InterfaceFactorialConfig:
             row_orders=row_orders,
             key_templates=key_templates,
             competence_threshold=threshold,
+            direction_source=direction_source,
+            mapping_balance_mappings=mapping_balance_mappings,
+        )
+
+    @property
+    def direction_mode(self) -> str:
+        return (
+            "mapping_balanced_direction"
+            if self.direction_source == "mapping_balanced"
+            else "raw_canonical_direction"
         )
 
 
@@ -616,6 +663,37 @@ def aggregate_interface_factorial_outputs(
         if inventory_paths
         else pd.DataFrame()
     )
+    expected_mode = config.direction_mode
+    if not factorial.empty:
+        actual_modes = set(factorial["mode"].dropna().astype(str).unique())
+        if actual_modes != {expected_mode}:
+            raise RuntimeError(
+                "Factorial output direction mismatch: expected only "
+                f"{expected_mode!r}, found {sorted(actual_modes)}. "
+                "Do not aggregate outputs produced by an older implementation."
+            )
+    if not inventory.empty:
+        inventory_modes = set(inventory["mode"].dropna().astype(str).unique())
+        if inventory_modes != {expected_mode}:
+            raise RuntimeError(
+                "Direction inventory mismatch: expected only "
+                f"{expected_mode!r}, found {sorted(inventory_modes)}."
+            )
+        if config.direction_source == "mapping_balanced":
+            if "n_mapping_extractions" not in inventory.columns:
+                raise RuntimeError(
+                    "Mapping-balanced inventory lacks n_mapping_extractions; "
+                    "the outputs were produced by an incompatible implementation."
+                )
+            observed_counts = set(
+                inventory["n_mapping_extractions"].dropna().astype(int).unique()
+            )
+            expected_count = len(config.mapping_balance_mappings)
+            if observed_counts != {expected_count}:
+                raise RuntimeError(
+                    "Mapping-balanced inventory extraction count mismatch: "
+                    f"expected {expected_count}, found {sorted(observed_counts)}."
+                )
     labels = list(config.audit.dataset.label_ranks)
     competence_summary = _summarize_competence(baseline, labels)
     primary_baseline = pd.DataFrame()
@@ -659,7 +737,7 @@ def aggregate_interface_factorial_outputs(
         primary_effect = condition_summary[
             condition_summary["identifier_set"].eq("letters_abc")
             & condition_summary["row_order"].eq("order_123")
-            & condition_summary["mode"].eq("raw_canonical_direction")
+            & condition_summary["mode"].eq(expected_mode)
         ].copy()
         association = primary_effect.merge(
             primary_baseline,
@@ -1083,6 +1161,16 @@ def run_interface_factorial_audit_from_json(
             model_dir = config.audit.output_dir / model_config.model.alias
             complete_path = model_dir / "interface_factorial_run_complete.csv"
             if complete_path.exists() and not config.audit.runtime.force_rerun:
+                completion = pd.read_csv(complete_path)
+                if (
+                    "direction_source" not in completion.columns
+                    or set(completion["direction_source"].astype(str))
+                    != {config.direction_source}
+                ):
+                    raise RuntimeError(
+                        f"{complete_path} was produced for a different or "
+                        "unrecorded direction source. Use a fresh output directory."
+                    )
                 continue
             tokenizer = model = None
             try:
@@ -1091,7 +1179,7 @@ def run_interface_factorial_audit_from_json(
                     device_map=model_config.model.device_map,
                     torch_dtype=model_config.model.torch_dtype,
                 )
-                directions, inventory = build_canonical_direction_bank(
+                canonical_directions, canonical_inventory = build_canonical_direction_bank(
                     model,
                     tokenizer,
                     canonical_items,
@@ -1103,6 +1191,43 @@ def run_interface_factorial_audit_from_json(
                     seed=config.audit.runtime.seed,
                     extraction_position="pre_answer",
                     enabled_modes=("raw_canonical_direction",),
+                )
+                canonical_raw = {
+                    pair_type: vector
+                    for (pair_type, mode), vector in canonical_directions.items()
+                    if mode == "raw_canonical_direction"
+                }
+                if config.direction_source == "mapping_balanced":
+                    balanced, _, inventory = _mapping_balanced_directions(
+                        model,
+                        tokenizer,
+                        base_items,
+                        config,
+                        model_config,
+                        canonical_raw,
+                    )
+                    directions = {
+                        (pair_type, "mapping_balanced_direction"): vector
+                        for pair_type, vector in balanced.items()
+                    }
+                    inventory = inventory[
+                        inventory["mode"].eq("mapping_balanced_direction")
+                    ].reset_index(drop=True)
+                else:
+                    directions = canonical_directions
+                    inventory = canonical_inventory
+                actual_modes = {mode for _, mode in directions}
+                if actual_modes != {config.direction_mode}:
+                    raise RuntimeError(
+                        "Constructed direction bank mismatch: expected "
+                        f"{config.direction_mode!r}, found {sorted(actual_modes)}."
+                    )
+                print(
+                    f"[{model_config.model.alias}] verified direction bank: "
+                    f"mode={config.direction_mode}, "
+                    f"contrasts={len(directions)}, "
+                    f"mapping_extractions="
+                    f"{len(config.mapping_balance_mappings) if config.direction_source == 'mapping_balanced' else 1}"
                 )
                 result_frames: list[pd.DataFrame] = []
                 for condition_index, condition in enumerate(conditions, start=1):
@@ -1123,10 +1248,26 @@ def run_interface_factorial_audit_from_json(
                             and steering_path.exists()
                             and not config.audit.runtime.force_rerun
                         ):
+                            completion = pd.read_csv(complete)
+                            cached_steering = pd.read_csv(steering_path)
+                            cached_modes = set(
+                                cached_steering["mode"].dropna().astype(str).unique()
+                            )
+                            if (
+                                "direction_source" not in completion.columns
+                                or set(completion["direction_source"].astype(str))
+                                != {config.direction_source}
+                                or cached_modes != {config.direction_mode}
+                            ):
+                                raise RuntimeError(
+                                    f"Incompatible cached condition at {condition_dir}: "
+                                    f"expected {config.direction_mode!r}, found "
+                                    f"{sorted(cached_modes)}. Use a fresh output directory."
+                                )
                             result_frames.extend(
                                 [
                                     pd.read_csv(baseline_path),
-                                    pd.read_csv(steering_path),
+                                    cached_steering,
                                 ]
                             )
                             continue
@@ -1157,6 +1298,8 @@ def run_interface_factorial_audit_from_json(
                                             "condition": condition.name,
                                             "template": template.name,
                                             "status": "complete",
+                                            "direction_source": config.direction_source,
+                                            "direction_mode": config.direction_mode,
                                         }
                                     ]
                                 ),
@@ -1191,6 +1334,13 @@ def run_interface_factorial_audit_from_json(
                                     "n_conditions": len(conditions),
                                     "locked_layer": model_config.locked_layer,
                                     "locked_alpha": model_config.locked_alpha,
+                                    "direction_source": config.direction_source,
+                                    "direction_mode": config.direction_mode,
+                                    "n_mapping_extractions": (
+                                        len(config.mapping_balance_mappings)
+                                        if config.direction_source == "mapping_balanced"
+                                        else 1
+                                    ),
                                 }
                             ]
                         ),

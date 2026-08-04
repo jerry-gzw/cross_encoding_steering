@@ -1,0 +1,7 @@
+interface,mapping_name,option_a_label,option_b_label,option_c_label,option_order,is_source_mapping,n_moved_slots,permutation_class
+letter_canonical,canonical_taboo_normal_expected,taboo,normal,expected,"taboo,normal,expected",True,0,identity
+letter_permutation_expected_taboo_normal,permutation_expected_taboo_normal,expected,taboo,normal,"expected,taboo,normal",False,3,three_cycle
+letter_permutation_normal_expected_taboo,permutation_normal_expected_taboo,normal,expected,taboo,"normal,expected,taboo",False,3,three_cycle
+letter_permutation_normal_taboo_expected,permutation_normal_taboo_expected,normal,taboo,expected,"normal,taboo,expected",False,2,transposition
+letter_permutation_taboo_expected_normal,permutation_taboo_expected_normal,taboo,expected,normal,"taboo,expected,normal",False,2,transposition
+letter_reversed,reversed_expected_normal_taboo,expected,normal,taboo,"expected,normal,taboo",False,2,transposition

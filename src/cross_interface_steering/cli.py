@@ -18,11 +18,25 @@ from .interface_factorial_audit import (
 from .interface_statistics import run_interface_statistics_from_json
 from .io import write_tables
 from .iti_probe_audit import run_iti_probe_audit_from_json
+from .layer_attribution_audit import run_layer_attribution_audit_from_json
 from .letter_permutation_audit import run_letter_permutation_audit_from_json
+from .mapping_audit import run_fixed_direction_mapping_audit_from_json
+from .mic import run_mic_pair_audit
 from .mnli_control import run_mnli_control_from_json, run_mnli_statistics_from_json
 from .pairs import audit_split_isolation, summarize_pairs
+from .position_audit import run_extraction_position_audit_from_json
 from .published_caa_audit import run_published_caa_audit_from_json
-from .validity_controls import run_evaluation_validity_controls_from_json
+from .readout_baseline_audit import run_readout_baseline_audit_from_json
+from .readout_geometry_audit import run_readout_geometry_audit_from_json
+from .readout_vocabulary_transfer import run_readout_vocabulary_transfer_from_json
+from .central_group_cluster_inference import run_central_group_cluster_inference_from_json
+from .validity_controls import (
+    prepare_caa_human_adjudication_from_json,
+    prepare_caa_human_annotation_from_json,
+    run_evaluation_validity_controls_from_json,
+    summarize_caa_human_adjudication_from_json,
+    summarize_caa_human_annotation_from_json,
+)
 
 
 def _model_source_overrides(value: str | None) -> dict[str, str]:
@@ -82,6 +96,21 @@ def cmd_prepare_sc101(args: argparse.Namespace) -> None:
     print(f"Prepared SC101 action-only pairs and endpoints in {output_dir}")
 
 
+def cmd_prepare_mic(args: argparse.Namespace) -> None:
+    tables = run_mic_pair_audit(
+        mic_path=args.input,
+        output_dir=args.output_dir,
+        min_rot_agreement=args.min_rot_agreement,
+        exclude_cross_split_dialogues=True,
+        max_pairs_per_dialogue_axis=args.max_pairs_per_dialogue_axis,
+        min_axis_train_pairs=args.min_axis_train_pairs,
+        min_axis_eval_pairs=args.min_axis_eval_pairs,
+    )
+    pairs_path = Path(args.output_dir).expanduser().resolve() / "pairs.csv"
+    build_ranked_endpoints_from_csv(pairs_path, Path(args.output_dir).expanduser().resolve())
+    print(tables.get("recommendation", pd.DataFrame()).to_string(index=False))
+
+
 def cmd_check_data(args: argparse.Namespace) -> None:
     config = ExperimentConfig.from_json(args.config, project_root=args.project_root)
     rows = [discover_dataset(dataset, config.project_root) for dataset in config.datasets]
@@ -111,6 +140,16 @@ def cmd_letter_permutations(args: argparse.Namespace) -> None:
     if summary.empty:
         summary = tables.get("audit__cross_interface_summary", pd.DataFrame())
     print(summary.to_string(index=False))
+
+
+def cmd_mapping_audit(args: argparse.Namespace) -> None:
+    tables = run_fixed_direction_mapping_audit_from_json(
+        args.config,
+        project_root=args.project_root,
+        model_source_overrides=_model_source_overrides(args.model_source_overrides),
+        model_aliases=_aliases(args.models),
+    )
+    print(tables.get("global_mapping_signature_statistics", pd.DataFrame()).to_string(index=False))
 
 
 def cmd_context_selectivity(args: argparse.Namespace) -> None:
@@ -155,6 +194,68 @@ def cmd_interface_factorial_statistics(args: argparse.Namespace) -> None:
         project_root=args.project_root,
     )
     print(tables.get("factorial_paper_model_summary", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_position_audit(args: argparse.Namespace) -> None:
+    tables = run_extraction_position_audit_from_json(
+        args.config,
+        project_root=args.project_root,
+        model_source_overrides=_model_source_overrides(args.model_source_overrides),
+        model_aliases=_aliases(args.models),
+    )
+    print(tables.get("position_global_summary", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_readout_baseline(args: argparse.Namespace) -> None:
+    tables = run_readout_baseline_audit_from_json(
+        args.config,
+        project_root=args.project_root,
+        model_source_overrides=_model_source_overrides(args.model_source_overrides),
+        model_aliases=_aliases(args.models),
+        phase=args.phase,
+    )
+    print(tables.get("readout_baseline_global_summary", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_readout_geometry(args: argparse.Namespace) -> None:
+    tables = run_readout_geometry_audit_from_json(
+        args.config,
+        project_root=args.project_root,
+        model_source_overrides=_model_source_overrides(args.model_source_overrides),
+        model_aliases=_aliases(args.models),
+        phase=args.phase,
+    )
+    print(tables.get("readout_geometry_global_summary", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_readout_vocabulary_transfer(args: argparse.Namespace) -> None:
+    tables = run_readout_vocabulary_transfer_from_json(
+        args.config,
+        project_root=args.project_root,
+        model_source_overrides=_model_source_overrides(args.model_source_overrides),
+        model_aliases=_aliases(args.models),
+        phase=args.phase,
+    )
+    print(tables.get("readout_vocabulary_transfer_component_ci", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_layer_attribution(args: argparse.Namespace) -> None:
+    tables = run_layer_attribution_audit_from_json(
+        args.config,
+        project_root=args.project_root,
+        model_source_overrides=_model_source_overrides(args.model_source_overrides),
+        model_aliases=_aliases(args.models),
+        phase=args.phase,
+    )
+    print(tables.get("layer_attribution_alternative_profile", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_central_inference(args: argparse.Namespace) -> None:
+    tables = run_central_group_cluster_inference_from_json(
+        args.config,
+        project_root=args.project_root,
+    )
+    print(tables.get("central_group_cluster_decision", pd.DataFrame()).to_string(index=False))
 
 
 def cmd_iti_probe(args: argparse.Namespace) -> None:
@@ -209,6 +310,32 @@ def cmd_validity(args: argparse.Namespace) -> None:
             break
 
 
+def cmd_prepare_caa_human_annotation(args: argparse.Namespace) -> None:
+    tables = prepare_caa_human_annotation_from_json(args.config, project_root=args.project_root)
+    print(tables.get("judge_validation_sampling_inventory", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_summarize_caa_human_annotation(args: argparse.Namespace) -> None:
+    tables = summarize_caa_human_annotation_from_json(args.config, project_root=args.project_root)
+    frame = tables.get("judge_validation_agreement", pd.DataFrame())
+    if frame.empty:
+        frame = tables.get("judge_validation_status", pd.DataFrame())
+    print(frame.to_string(index=False))
+
+
+def cmd_prepare_caa_human_adjudication(args: argparse.Namespace) -> None:
+    tables = prepare_caa_human_adjudication_from_json(args.config, project_root=args.project_root)
+    print(tables.get("judge_validation_adjudication_inventory", pd.DataFrame()).to_string(index=False))
+
+
+def cmd_summarize_caa_human_adjudication(args: argparse.Namespace) -> None:
+    tables = summarize_caa_human_adjudication_from_json(args.config, project_root=args.project_root)
+    frame = tables.get("judge_validation_final_agreement", pd.DataFrame())
+    if frame.empty:
+        frame = tables.get("judge_validation_adjudication_status", pd.DataFrame())
+    print(frame.to_string(index=False))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cross-interface-steering")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -234,6 +361,15 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--output-dir", required=True)
     command.set_defaults(func=cmd_prepare_sc101)
 
+    command = sub.add_parser("prepare-mic")
+    command.add_argument("--input", required=True)
+    command.add_argument("--output-dir", required=True)
+    command.add_argument("--min-rot-agreement", type=float, default=3.0)
+    command.add_argument("--max-pairs-per-dialogue-axis", type=int, default=1)
+    command.add_argument("--min-axis-train-pairs", type=int, default=128)
+    command.add_argument("--min-axis-eval-pairs", type=int, default=20)
+    command.set_defaults(func=cmd_prepare_mic)
+
     command = sub.add_parser("run-cross-interface")
     config_flags(command, models=True)
     command.add_argument("--inventory-only", action="store_true")
@@ -243,6 +379,10 @@ def build_parser() -> argparse.ArgumentParser:
     config_flags(command, models=True)
     command.add_argument("--phase", choices=["run", "aggregate", "summarize", "all"], default="all")
     command.set_defaults(func=cmd_letter_permutations)
+
+    command = sub.add_parser("run-mapping-audit")
+    config_flags(command, models=True)
+    command.set_defaults(func=cmd_mapping_audit)
 
     command = sub.add_parser("run-context-selectivity")
     config_flags(command)
@@ -269,6 +409,34 @@ def build_parser() -> argparse.ArgumentParser:
     config_flags(command)
     command.set_defaults(func=cmd_interface_factorial_statistics)
 
+    command = sub.add_parser("run-position-audit")
+    config_flags(command, models=True)
+    command.set_defaults(func=cmd_position_audit)
+
+    command = sub.add_parser("run-readout-baseline")
+    config_flags(command, models=True)
+    command.add_argument("--phase", choices=["run", "aggregate", "all"], default="all")
+    command.set_defaults(func=cmd_readout_baseline)
+
+    command = sub.add_parser("run-readout-geometry")
+    config_flags(command, models=True)
+    command.add_argument("--phase", choices=["run", "aggregate", "all"], default="all")
+    command.set_defaults(func=cmd_readout_geometry)
+
+    command = sub.add_parser("run-readout-vocabulary-transfer")
+    config_flags(command, models=True)
+    command.add_argument("--phase", choices=["run", "aggregate", "all"], default="all")
+    command.set_defaults(func=cmd_readout_vocabulary_transfer)
+
+    command = sub.add_parser("run-layer-attribution")
+    config_flags(command, models=True)
+    command.add_argument("--phase", choices=["run", "aggregate", "all"], default="all")
+    command.set_defaults(func=cmd_layer_attribution)
+
+    command = sub.add_parser("run-central-inference")
+    config_flags(command)
+    command.set_defaults(func=cmd_central_inference)
+
     command = sub.add_parser("run-iti-probe")
     config_flags(command, models=True)
     command.add_argument(
@@ -289,6 +457,22 @@ def build_parser() -> argparse.ArgumentParser:
     config_flags(command, models=True)
     command.add_argument("--phase", choices=["random", "prepare-judge", "summarize", "all"], default="all")
     command.set_defaults(func=cmd_validity)
+
+    command = sub.add_parser("prepare-caa-human-annotation")
+    config_flags(command)
+    command.set_defaults(func=cmd_prepare_caa_human_annotation)
+
+    command = sub.add_parser("summarize-caa-human-annotation")
+    config_flags(command)
+    command.set_defaults(func=cmd_summarize_caa_human_annotation)
+
+    command = sub.add_parser("prepare-caa-human-adjudication")
+    config_flags(command)
+    command.set_defaults(func=cmd_prepare_caa_human_adjudication)
+
+    command = sub.add_parser("summarize-caa-human-adjudication")
+    config_flags(command)
+    command.set_defaults(func=cmd_summarize_caa_human_adjudication)
     return parser
 
 

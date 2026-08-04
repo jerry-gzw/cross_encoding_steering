@@ -6,7 +6,9 @@ from cross_interface_steering.validity_controls import (
     ValidityControlsConfig,
     build_multi_random_context_statistics,
     build_multi_random_margin_statistics,
+    prepare_human_adjudication,
     prepare_judge_validation,
+    summarize_human_adjudication,
     summarize_judge_validation,
 )
 
@@ -21,11 +23,16 @@ def _config(tmp_path: Path) -> ValidityControlsConfig:
         target_context_rows=tmp_path / "target_context.csv",
         context_pair_metadata=tmp_path / "context_pairs.csv",
         published_caa_judgments=tmp_path / "judgments.csv",
+        published_caa_multi_judge_scores=tmp_path / "multi_judge_scores.csv",
         annotation_files=(output / "annotator_1.csv", output / "annotator_2.csv"),
+        adjudication_file=output / "adjudicator.csv",
+        panel_judge_aliases=("judge_a", "judge_b", "judge_c"),
         target_modes=("raw_pre_answer",),
         interfaces=("letter_canonical",),
         required_multipliers=(-2.0, 0.0, 2.0),
         judge_sample_per_model_behavior=2,
+        judge_pair_items_across_models=False,
+        adjudication_score_gap=3,
         minimum_base_gap=0.05,
         n_boot=200,
         confidence=0.95,
@@ -178,6 +185,8 @@ def test_judge_validation_is_blind_and_summarizes_completed_forms(tmp_path: Path
         assert "judge_score" not in form
         form = form.merge(key[["annotation_id", "judge_score"]], on="annotation_id", how="left")
         form["human_score"] = form["judge_score"]
+        form["evidence_span"] = "decisive evidence"
+        form["confidence"] = "high"
         form.drop(columns="judge_score").to_csv(path, index=False)
 
     summary = summarize_judge_validation(config)
@@ -185,3 +194,66 @@ def test_judge_validation_is_blind_and_summarizes_completed_forms(tmp_path: Path
     human_row = agreement[agreement["scope"].eq("human_1_vs_human_2")].iloc[0]
     assert human_row["quadratic_weighted_kappa"] == 1.0
     assert summary["judge_validation_verdict_agreement"]["verdict_agrees"].all()
+
+
+def test_adjudication_and_three_judge_panel_are_summarized(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    rows = []
+    panel_rows = []
+    for item_index in range(2):
+        for multiplier, score in ((-2.0, 0.0), (0.0, 2.0), (2.0, 5.0)):
+            row = {
+                "model_alias": "model",
+                "model_name": "Model",
+                "behavior": "hallucination",
+                "item_id": f"item-{item_index}",
+                "multiplier": multiplier,
+                "question": "Question",
+                "response": f"Response {item_index} {multiplier}",
+                "judge_score": score,
+            }
+            rows.append(row)
+            for alias in config.panel_judge_aliases:
+                panel_rows.append({
+                    **{key: row[key] for key in (
+                        "model_alias", "model_name", "behavior", "item_id", "multiplier"
+                    )},
+                    "judge_alias": alias,
+                    "judge_score": score,
+                })
+    pd.DataFrame(rows).to_csv(config.published_caa_judgments, index=False)
+    pd.DataFrame(panel_rows).to_csv(config.published_caa_multi_judge_scores, index=False)
+    prepared = prepare_judge_validation(config)
+    key = prepared["judge_validation_sample_key"]
+    disagreement_id = key.iloc[0]["annotation_id"]
+    for index, path in enumerate(config.annotation_files):
+        form = pd.read_csv(path)
+        form = form.merge(key[["annotation_id", "judge_score"]], on="annotation_id", how="left")
+        form["human_score"] = form["judge_score"]
+        if index == 1:
+            form.loc[form["annotation_id"].eq(disagreement_id), "human_score"] = 10
+        form["evidence_span"] = "decisive evidence"
+        form["confidence"] = "high"
+        form.drop(columns="judge_score").to_csv(path, index=False)
+
+    summary = summarize_judge_validation(config)
+    panel = summary["judge_validation_agreement"]
+    assert "three_judge_panel_vs_human_mean" in set(panel["scope"])
+
+    adjudication = prepare_human_adjudication(config)
+    inventory = adjudication["judge_validation_adjudication_inventory"]
+    assert inventory.loc[inventory["behavior"].eq("__all__"), "n_adjudication_rows"].item() == 1
+    form = pd.read_csv(config.adjudication_file)
+    assert "model_alias" not in form
+    assert "multiplier" not in form
+    form["adjudicated_score"] = form["candidate_score_a"]
+    form["adjudication_reason"] = "Resolved from rubric and evidence."
+    form["confidence"] = "high"
+    form.to_csv(config.adjudication_file, index=False)
+
+    final = summarize_human_adjudication(config)
+    assert final["judge_validation_adjudication_status"].iloc[0]["status"] == "complete"
+    assert "three_judge_panel_vs_human_final" in set(
+        final["judge_validation_final_agreement"]["scope"]
+    )
+    assert final["judge_validation_final_scored_rows"]["adjudicated_score"].notna().sum() == 1

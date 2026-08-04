@@ -526,10 +526,10 @@ def run_letter_permutation_audit_from_json(
     *,
     project_root: str | Path | None = None,
     model_source_overrides: dict[str, str] | None = None,
-    model_aliases: list[str] | None = None,
+    model_aliases=None,
     phase: str = "all",
 ) -> dict[str, pd.DataFrame]:
-    """Run, aggregate, or summarize the exhaustive three-label audit."""
+    """Run, aggregate, or summarize the exhaustive letter-mapping audit."""
     from .cross_interface_audit import (
         CrossInterfaceConfig,
         aggregate_cross_interface_outputs,
@@ -538,25 +538,24 @@ def run_letter_permutation_audit_from_json(
 
     allowed = {"run", "aggregate", "summarize", "all"}
     if phase not in allowed:
-        raise ValueError(f"Unsupported letter-permutation phase {phase!r}")
-
+        raise ValueError(f"Unsupported phase {phase!r}; expected {sorted(allowed)}")
     tables: dict[str, pd.DataFrame] = {}
     if phase in {"run", "all"}:
-        outputs = run_cross_interface_audit_from_json(
+        result = run_cross_interface_audit_from_json(
             config_path,
             project_root=project_root,
             model_source_overrides=model_source_overrides,
             model_aliases=model_aliases,
         )
-        tables.update({f"audit__{key}": value for key, value in outputs.items()})
+        tables.update({f"audit__{key}": value for key, value in result.items()})
     if phase in {"aggregate", "summarize", "all"}:
         config = CrossInterfaceConfig.from_json(
             config_path,
             project_root=project_root,
             model_source_overrides=model_source_overrides,
         )
-        outputs = aggregate_cross_interface_outputs(config)
-        tables.update({f"audit__{key}": value for key, value in outputs.items()})
+        result = aggregate_cross_interface_outputs(config)
+        tables.update({f"audit__{key}": value for key, value in result.items()})
     if phase in {"summarize", "all"}:
         tables.update(
             summarize_letter_permutation_audit(
