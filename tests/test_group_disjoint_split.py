@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from cross_interface_steering.pairs import apply_generated_split, audit_split_isolation
+from cross_encoding_steering.pairs import apply_generated_split, audit_split_isolation
 
 
 def _synthetic_pairs() -> tuple[pd.DataFrame, pd.DataFrame]:

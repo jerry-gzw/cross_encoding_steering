@@ -2,7 +2,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from cross_interface_steering.steering import _last_token_indices
+from cross_encoding_steering.steering import _last_token_indices
 
 
 def test_last_token_indices_support_left_and_right_padding() -> None:

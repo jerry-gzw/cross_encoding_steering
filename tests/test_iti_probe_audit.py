@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from cross_interface_steering.iti_probe_audit import (
+from cross_encoding_steering.iti_probe_audit import (
     HeadDirection,
     adjusted_pair_effects,
     bootstrap_adjusted_effects,

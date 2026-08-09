@@ -1,12 +1,13 @@
 # What Does Activation Steering Control?
 
-Code and compact result tables for **What Does Activation Steering Control? Cross-Interface Attribution and Local Readout Geometry**.
+Code and compact result tables for **What Does Activation Steering Control? Attribution Across Answer Encodings and Output-Sensitive Subspaces**.
 
 The core audit extracts one steering direction, freezes it, and changes the
-answer interface while keeping the item, model, layer, and intervention dose
-fixed. It then tests whether movement follows the current label, the answer
-identifier used during extraction, or its displayed row. The repository also
-contains the paper's localization, readout-geometry, selectivity, cross-task,
+answer encoding while keeping the item, model, direction, layer, position, and
+intervention dose fixed. It then tests whether score changes follow the current
+semantic label, the option identifier used during extraction, or that
+identifier's displayed row. The repository also contains the paper's depth and
+position localization, output-sensitive-subspace, matched-context, cross-task,
 cross-method, and open-generation checks.
 
 ## Included evidence
@@ -16,7 +17,7 @@ cross-method, and open-generation checks.
 - the 108-condition semantics x identifier-vocabulary x row-order factorial;
 - CAA and ITI-style interventions;
 - layer and extraction-position localization;
-- direct readout baselines and local Jacobian projection/residual interventions;
+- direct output-sensitive baselines and local Jacobian projection/residual interventions;
 - cross-vocabulary readout transfer;
 - in-family mapping-balanced factorial evaluation;
 - SC101, MultiNLI, matched-context, random-direction, and competence controls;
@@ -32,7 +33,7 @@ artifact.
 configs/                    Paper experiment configurations
 datasets/                   Raw-data placement guide (data are not redistributed)
 scripts/                    Resumable GPU and CPU entry points
-src/cross_interface_steering/
+src/cross_encoding_steering/
                             Pairing, interventions, attribution, and inference
 tests/                      CPU tests for the released evidence chain
 paper_results/              Reported tables and figures in machine-readable form
@@ -106,7 +107,7 @@ models across workers and set the component-specific phase to `run` or
 `aggregate` where needed.
 
 ```bash
-# Exhaustive letter mappings, factorial attribution, and ITI replication
+# Exhaustive letter encodings, factorial attribution, and ITI replication
 NDD_STRICT_TASK=caa NDD_STRICT_CAA_PHASE=all bash scripts/run_normbank_strict_audit.sh
 NDD_STRICT_TASK=factorial NDD_FACTORIAL_PHASE=all bash scripts/run_normbank_strict_audit.sh
 NDD_STRICT_TASK=iti NDD_ITI_PHASE=all bash scripts/run_normbank_strict_audit.sh
@@ -140,7 +141,7 @@ bash scripts/run_central_inference.sh
 bash scripts/prepare_sc101.sh
 bash scripts/run_sc101_audit.sh
 
-# Pair-ID NormBank interfaces, matched-context selectivity, and controls
+# Pair-ID NormBank encodings, matched-context selectivity, and controls
 bash scripts/prepare_normbank.sh
 bash scripts/run_normbank_audit.sh
 bash scripts/run_validity_controls.sh
@@ -195,7 +196,12 @@ regenerated under `outputs/` and are not committed.
 
 ```bash
 pytest -q
-python -m cross_interface_steering.cli --help
+python -m cross_encoding_steering.cli --help
+```
+
+## Citation
+```bibtex
+# TODO
 ```
 
 ## License

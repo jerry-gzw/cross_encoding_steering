@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from cross_interface_steering.interface_statistics import (
+from cross_encoding_steering.interface_statistics import (
     InterfaceStatisticsConfig,
     build_interface_statistics,
 )

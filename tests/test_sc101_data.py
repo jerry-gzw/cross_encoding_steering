@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from cross_interface_steering.config import DatasetConfig
-from cross_interface_steering.data import build_sc101_pairs
+from cross_encoding_steering.config import DatasetConfig
+from cross_encoding_steering.data import build_sc101_pairs
 
 
 def test_sc101_action_only_adapter_collapses_labels(tmp_path: Path) -> None:

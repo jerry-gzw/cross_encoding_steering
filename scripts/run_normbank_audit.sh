@@ -6,15 +6,15 @@ source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/common.sh"
 TASK="${NDD_NORMBANK_TASK:-all}"
 
 run_cross_interface() {
-  log_step "NormBank: frozen-direction cross-interface audit"
-  artifact_cli run-cross-interface \
+  log_step "NormBank: frozen-direction cross-encoding audit"
+  artifact_cli run-cross-encoding \
     --config "${REPO_ROOT}/configs/normbank_cross_interface_steering.example.json" \
     --project-root "${NDD_PROJECT_ROOT}" "${model_args[@]}"
 }
 
 run_nuisance() {
   log_step "NormBank: mapping-balanced, label-cue, and nuisance baselines"
-  artifact_cli run-cross-interface \
+  artifact_cli run-cross-encoding \
     --config "${REPO_ROOT}/configs/normbank_interface_nuisance_baselines.example.json" \
     --project-root "${NDD_PROJECT_ROOT}" "${model_args[@]}"
 }
@@ -42,7 +42,7 @@ run_statistics() {
 }
 
 case "${TASK}" in
-  cross-interface) run_cross_interface ;;
+  cross-encoding) run_cross_interface ;;
   nuisance) run_nuisance ;;
   permutations) run_permutations ;;
   context) run_context ;;
@@ -56,7 +56,7 @@ case "${TASK}" in
     ;;
   *)
     echo "Unknown NDD_NORMBANK_TASK=${TASK}" >&2
-    echo "Use: cross-interface, nuisance, permutations, context, statistics, or all" >&2
+    echo "Use: cross-encoding, nuisance, permutations, context, statistics, or all" >&2
     exit 2
     ;;
 esac

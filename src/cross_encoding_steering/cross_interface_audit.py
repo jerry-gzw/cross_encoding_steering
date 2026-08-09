@@ -1,7 +1,7 @@
-"""Cross-interface evaluation for frozen contrastive steering directions.
+"""Cross-encoding evaluation for frozen contrastive steering directions.
 
 The audit deliberately keeps direction extraction fixed while changing only
-the answer interface.  It reports sequence-likelihood margins rather than
+the answer encoding.  It reports sequence-likelihood margins rather than
 approximating multi-token verbalizers with a single next-token probability.
 """
 from __future__ import annotations

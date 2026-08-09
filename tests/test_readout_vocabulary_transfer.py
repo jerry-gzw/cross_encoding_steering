@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 
-from cross_interface_steering.readout_vocabulary_transfer import (
+from cross_encoding_steering.readout_vocabulary_transfer import (
     CORE_MODES,
     _wide_transfer_units,
 )

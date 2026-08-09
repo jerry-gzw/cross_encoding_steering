@@ -4,13 +4,13 @@ from pathlib import Path
 
 import numpy as np
 
-from cross_interface_steering.cross_interface_audit import (
+from cross_encoding_steering.cross_interface_audit import (
     CrossInterfaceConfig,
     InterfaceDefinition,
     _mapping_norm_diagnostics,
     _original_slot_labels,
 )
-from cross_interface_steering.mapping_audit import (
+from cross_encoding_steering.mapping_audit import (
     FixedDirectionMappingAuditConfig,
     MappingDefinition,
     MappingAuditRuntimeConfig,

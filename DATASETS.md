@@ -40,8 +40,8 @@ grouping; they are not treated as strict counterfactual contexts.
 - Labels: `contradiction`, `neutral`, `entailment`.
 
 The control matches examples sharing the same premise and carrying different
-relation labels. It is a non-norm comparison for the evaluation protocol, not
-a general NLI benchmark claim.
+relation labels. It is a non-norm comparison for the cross-encoding evaluation,
+not a general NLI benchmark claim.
 
 ## Moral Integrity Corpus (MIC)
 
@@ -53,7 +53,7 @@ a general NLI benchmark claim.
 The supplement uses MIC only as a binary extraction-position sensitivity
 check. Pairs keep the dialogue and moral axis fixed while changing the rule of
 thumb. Because binary label swapping algebraically couples current-label and
-extraction-identifier effects, MIC is not used for the main attribution claim.
+extraction-ID effects, MIC is not used for the main attribution claim.
 
 ## Public CAA repository
 

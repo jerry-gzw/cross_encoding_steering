@@ -1,7 +1,7 @@
 """Pair-level context-conditioned discrimination analysis.
 
 This module consumes the endpoint-level ``context_plus`` observations already
-written by the cross-interface evaluator.  It does not rerun a language model:
+written by the cross-encoding evaluator.  It does not rerun a language model:
 the required baseline and steered high-vs-low margins are already present for
 both endpoints of every strict counterfactual pair.
 """

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from cross_interface_steering.central_group_cluster_inference import (
+from cross_encoding_steering.central_group_cluster_inference import (
     _cluster_bootstrap_balanced_means,
     _pair_group_map,
 )

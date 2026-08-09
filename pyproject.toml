@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cross-interface-steering-evaluation"
+name = "cross-encoding-steering-evaluation"
 version = "1.0.0"
-description = "Artifact code for cross-interface evaluation of activation steering for alignment."
+description = "Artifact code for cross-encoding attribution of activation-steering effects."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -27,7 +27,7 @@ judges = [
 dev = ["pytest>=7.0"]
 
 [project.scripts]
-cross-interface-steering = "cross_interface_steering.cli:main"
+cross-encoding-steering = "cross_encoding_steering.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,4 +1,4 @@
-"""Submission-facing validity controls for cross-interface steering evidence."""
+"""Submission-facing validity controls for cross-encoding steering evidence."""
 from __future__ import annotations
 
 import hashlib

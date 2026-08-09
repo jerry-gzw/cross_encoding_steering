@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from cross_interface_steering.letter_permutation_audit import (
+from cross_encoding_steering.letter_permutation_audit import (
     LetterPermutationStatisticsConfig,
     _bootstrap_statistics,
     _decision_table,

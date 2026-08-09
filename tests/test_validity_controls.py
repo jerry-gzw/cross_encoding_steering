@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from cross_interface_steering.validity_controls import (
+from cross_encoding_steering.validity_controls import (
     ValidityControlsConfig,
     build_multi_random_context_statistics,
     build_multi_random_margin_statistics,

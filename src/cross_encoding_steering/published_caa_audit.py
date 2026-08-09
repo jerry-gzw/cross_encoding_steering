@@ -1,4 +1,4 @@
-"""Reproduce and audit the public CAA protocol across answer interfaces.
+"""Reproduce and audit the public CAA protocol across answer encodings.
 
 The implementation follows the public CAA data and intervention convention:
 directions are extracted from paired answer completions, then added to every

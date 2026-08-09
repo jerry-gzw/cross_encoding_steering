@@ -6,9 +6,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import cross_interface_steering.published_caa_audit as published_caa_audit
+import cross_encoding_steering.published_caa_audit as published_caa_audit
 
-from cross_interface_steering.published_caa_audit import (
+from cross_encoding_steering.published_caa_audit import (
     CAAJudgeConfig,
     PublishedCAAAuditConfig,
     _collect_multi_judge_tables,

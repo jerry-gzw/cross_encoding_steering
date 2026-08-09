@@ -4,17 +4,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from cross_interface_steering.mapping_audit import (
+from cross_encoding_steering.mapping_audit import (
     MappingDefinition,
     PromptField,
     RankedChoiceDatasetConfig,
     build_mapping_items,
 )
-from cross_interface_steering.position_audit import (
+from cross_encoding_steering.position_audit import (
     ExtractionPositionAuditConfig,
     build_position_comparisons,
 )
-from cross_interface_steering.steering import token_indices_from_character_offsets
+from cross_encoding_steering.steering import token_indices_from_character_offsets
 
 
 def _dataset(tmp_path: Path) -> RankedChoiceDatasetConfig:

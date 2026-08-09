@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from cross_interface_steering.readout_baseline_audit import (
+from cross_encoding_steering.readout_baseline_audit import (
     BASELINE_MODES,
     build_simple_readout_baseline_bank,
 )

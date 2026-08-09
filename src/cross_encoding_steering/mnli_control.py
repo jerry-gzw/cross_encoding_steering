@@ -1,4 +1,4 @@
-"""Matched three-way MNLI control for cross-interface steering effects."""
+"""Matched three-way MNLI control for cross-encoding steering effects."""
 from __future__ import annotations
 
 import hashlib
@@ -113,7 +113,7 @@ class MnliControlConfig:
             for item in data.get("interfaces", [])
         )
         if not interfaces:
-            raise ValueError("MNLI control requires at least one answer interface")
+            raise ValueError("MNLI control requires at least one answer encoding")
         for interface in interfaces:
             if interface.kind not in {"letter_mcq", "completion"}:
                 raise ValueError(f"Unsupported MNLI interface kind: {interface.kind}")

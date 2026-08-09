@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from cross_interface_steering.cross_interface_audit import PromptTemplate
-from cross_interface_steering.interface_factorial_audit import (
+from cross_encoding_steering.cross_interface_audit import PromptTemplate
+from cross_encoding_steering.interface_factorial_audit import (
     FactorialCondition,
     IdentifierSet,
     InterfaceFactorialConfig,
@@ -15,7 +15,7 @@ from cross_interface_steering.interface_factorial_audit import (
     _macro_f1,
     _prompt_and_candidates,
 )
-from cross_interface_steering.mapping_audit import (
+from cross_encoding_steering.mapping_audit import (
     FixedDirectionMappingAuditConfig,
     MappingAuditRuntimeConfig,
     MappingAuditStatisticsConfig,

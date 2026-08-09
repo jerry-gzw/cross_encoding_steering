@@ -3,11 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from cross_interface_steering.layer_attribution_audit import (
+from cross_encoding_steering.layer_attribution_audit import (
     LAYER_ATTRIBUTION_MODES,
     build_layer_direction_bank,
 )
-from cross_interface_steering.layer_attribution_statistics import (
+from cross_encoding_steering.layer_attribution_statistics import (
     build_layer_group_cluster_statistics,
 )
 

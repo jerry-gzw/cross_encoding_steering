@@ -7,7 +7,7 @@ PHASE="${NDD_MNLI_PHASE:-all}"
 CONFIG="${NDD_MNLI_CONFIG:-${REPO_ROOT}/configs/mnli_non_norm_control.example.json}"
 
 if [[ "${PHASE}" == "run" || "${PHASE}" == "all" ]]; then
-  log_step "MNLI: matched non-norm cross-interface control"
+  log_step "MNLI: matched non-norm cross-encoding control"
   artifact_cli run-mnli-control \
     --config "${CONFIG}" \
     --project-root "${NDD_PROJECT_ROOT}" "${model_args[@]}"

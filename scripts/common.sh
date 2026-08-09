@@ -15,7 +15,7 @@ log_step() {
 
 artifact_cli() {
   PYTHONPATH="${REPO_ROOT}/src${PYTHONPATH:+:${PYTHONPATH}}" \
-    "${NDD_PYTHON_BIN:-python}" -m cross_interface_steering.cli "$@"
+    "${NDD_PYTHON_BIN:-python}" -m cross_encoding_steering.cli "$@"
 }
 
 model_args=()

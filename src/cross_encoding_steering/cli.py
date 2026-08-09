@@ -337,7 +337,7 @@ def cmd_summarize_caa_human_adjudication(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="cross-interface-steering")
+    parser = argparse.ArgumentParser(prog="cross-encoding-steering")
     sub = parser.add_subparsers(dest="command", required=True)
 
     def config_flags(command: argparse.ArgumentParser, *, models: bool = False) -> None:
@@ -370,7 +370,7 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--min-axis-eval-pairs", type=int, default=20)
     command.set_defaults(func=cmd_prepare_mic)
 
-    command = sub.add_parser("run-cross-interface")
+    command = sub.add_parser("run-cross-encoding")
     config_flags(command, models=True)
     command.add_argument("--inventory-only", action="store_true")
     command.set_defaults(func=cmd_cross_interface)

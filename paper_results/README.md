@@ -4,7 +4,7 @@ This directory contains compact copies of the tables and figures reported in
 the main paper and supplement. They support result inspection; pair-level model
 outputs are regenerated under `outputs/`.
 
-## Core cross-interface attribution
+## Core cross-encoding attribution
 
 - `main_letter_permutation_by_model.csv`
 - `main_interface_factorial_attribution_by_model.csv`
@@ -17,7 +17,7 @@ outputs are regenerated under `outputs/`.
 - `appendix_group_disjoint_split_isolation.csv`
 - `appendix_central_group_cluster_decision.csv`
 
-## Localization and readout geometry
+## Localization and output-sensitive subspaces
 
 - `main_layer_attribution_trajectory.csv`
 - `main_layer_attribution_by_model.csv`

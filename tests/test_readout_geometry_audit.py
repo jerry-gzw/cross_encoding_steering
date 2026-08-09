@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from cross_interface_steering.readout_geometry_audit import (
+from cross_encoding_steering.readout_geometry_audit import (
     ReadoutGeometryAuditConfig,
     decompose_against_subspace,
     estimate_readout_subspace,
