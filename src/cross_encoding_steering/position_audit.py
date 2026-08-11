@@ -99,12 +99,6 @@ class ExtractionPositionAuditConfig:
         return self.mapping_audit.output_dir
 
 
-def _fingerprint(vector: np.ndarray) -> str:
-    import hashlib
-
-    return hashlib.sha256(np.asarray(vector, dtype=np.float32).tobytes()).hexdigest()[:16]
-
-
 def _cosine(left: np.ndarray, right: np.ndarray) -> float:
     denominator = float(np.linalg.norm(left) * np.linalg.norm(right))
     return float(np.dot(left, right) / denominator) if denominator else np.nan
@@ -187,7 +181,6 @@ def build_position_direction_banks(
                     "layer_index": resolved_layer,
                     "subspace_dim": audit.subspace_dim,
                     "direction_l2": float(np.linalg.norm(vector)),
-                    "direction_sha256": _fingerprint(vector),
                     "shared_explained_variance": float(source_row["shared_explained_variance"]),
                     "basis_protocol": source_row.get("basis_protocol", "in_sample"),
                     "basis_source_contrasts": source_row.get("basis_source_contrasts", "__all__"),
@@ -229,7 +222,6 @@ def build_position_direction_banks(
                         "direction_l2": float(np.linalg.norm(vector)),
                         "natural_direction_l2": source_norm,
                         "norm_reference_position": "pre_answer",
-                        "direction_sha256": _fingerprint(vector),
                         "shared_explained_variance": np.nan,
                         "n_train_pairs": int(
                             train_pairs[train_pairs["pair_type"].eq(pair_type)][
@@ -255,7 +247,6 @@ def build_position_direction_banks(
                         "layer_index": resolved_layer,
                         "subspace_dim": 0,
                         "direction_l2": 0.0,
-                        "direction_sha256": _fingerprint(zero),
                         "shared_explained_variance": np.nan,
                         "n_train_pairs": int(
                             train_pairs[train_pairs["pair_type"].eq(pair_type)][

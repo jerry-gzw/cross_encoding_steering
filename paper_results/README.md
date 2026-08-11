@@ -78,6 +78,3 @@ outputs are regenerated under `outputs/`.
 `figures/` contains PNG and editable SVG copies of the reported quantitative
 figures. The conceptual overview is authored separately from these experiment
 outputs.
-
-`MANIFEST.csv` lists every file in this directory except the manifest itself,
-together with its byte size and SHA-256 digest.

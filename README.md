@@ -195,9 +195,8 @@ ITI heads and strength are selected on validation data.
 ## Reported assets
 
 `paper_results/` contains compact CSV copies of the reported summaries and the
-paper figures. Its README maps claims to files, and `MANIFEST.csv` records each
-asset's size and SHA-256 digest. Full pair-level outputs are regenerated under
-`outputs/` and are not committed.
+paper figures. Its README maps claims to files. Full pair-level outputs are
+regenerated under `outputs/` and are not committed.
 
 ## Validation
 

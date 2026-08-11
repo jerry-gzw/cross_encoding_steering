@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -98,12 +97,6 @@ class ReadoutBaselineAuditConfig:
     @property
     def output_dir(self) -> Path:
         return self.mapping_audit.output_dir
-
-
-def _fingerprint(vector: np.ndarray) -> str:
-    return hashlib.sha256(
-        np.asarray(vector, dtype=np.float32).tobytes()
-    ).hexdigest()[:16]
 
 
 def _unit_rows(matrix: np.ndarray) -> np.ndarray:
@@ -304,7 +297,6 @@ def build_simple_readout_baseline_bank(
                     "raw_caa_l2": raw_norm,
                     "n_gradient_vectors": int(len(gradient_matrix)),
                     "normalize_gradient_rows": bool(normalize_gradient_rows),
-                    "direction_sha256": _fingerprint(vector),
                 }
             )
             for reference_mode, reference in reference_vectors.items():

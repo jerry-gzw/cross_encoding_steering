@@ -107,10 +107,6 @@ class ReadoutGeometryAuditConfig:
         return self.mapping_audit.output_dir
 
 
-def _fingerprint(vector: np.ndarray) -> str:
-    return hashlib.sha256(np.asarray(vector, dtype=np.float32).tobytes()).hexdigest()[:16]
-
-
 def _strict_identifier_token_ids(tokenizer: Any, identifiers: tuple[str, ...]) -> list[int]:
     token_ids = []
     for identifier in identifiers:
@@ -509,7 +505,6 @@ def build_readout_direction_bank(
                     "mode": output_mode,
                     "extraction_mapping": extraction_mapping,
                     "direction_l2": float(np.linalg.norm(output_vector)),
-                    "direction_sha256": _fingerprint(np.asarray(output_vector)),
                     "raw_l2": decomposition["raw_l2"],
                     "readout_projection_l2": decomposition["projection_l2"],
                     "readout_orthogonal_l2": decomposition["residual_l2"],

@@ -1575,7 +1575,6 @@ def _openai_compatible_judge_call(
         "judge_reasoning_tokens": getattr(details, "reasoning_tokens", None),
         "judge_total_tokens": getattr(usage, "total_tokens", None),
         "judge_response_model": getattr(response, "model", config.model),
-        "judge_system_fingerprint": getattr(response, "system_fingerprint", "") or "",
     }
 
 
@@ -1618,7 +1617,6 @@ def _anthropic_judge_call(
         "judge_reasoning_tokens": None,
         "judge_total_tokens": total_tokens,
         "judge_response_model": getattr(response, "model", config.model),
-        "judge_system_fingerprint": "",
     }
 
 
@@ -1649,7 +1647,6 @@ def _gemini_judge_call(
         "judge_reasoning_tokens": getattr(usage, "thoughts_token_count", None),
         "judge_total_tokens": getattr(usage, "total_token_count", None),
         "judge_response_model": getattr(response, "model_version", config.model),
-        "judge_system_fingerprint": "",
     }
 
 
@@ -1723,7 +1720,6 @@ def _gemini_batch_judge_call(
         "judge_reasoning_tokens": getattr(usage, "thoughts_token_count", None),
         "judge_total_tokens": getattr(usage, "total_token_count", None),
         "judge_response_model": getattr(response, "model_version", config.model),
-        "judge_system_fingerprint": "",
     }
 
 

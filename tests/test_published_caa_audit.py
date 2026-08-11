@@ -66,7 +66,6 @@ def test_gemini_batch_schema_and_response_are_item_aligned(monkeypatch) -> None:
                 "judge_reasoning_tokens": 10,
                 "judge_total_tokens": 130,
                 "judge_response_model": "gemini-test",
-                "judge_system_fingerprint": "",
             },
         )
 

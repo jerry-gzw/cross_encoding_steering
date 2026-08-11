@@ -501,10 +501,6 @@ def build_mapping_eval_items(
     return pd.DataFrame(rows)
 
 
-def _fingerprint(vector: np.ndarray) -> str:
-    return hashlib.sha256(np.asarray(vector, dtype=np.float32).tobytes()).hexdigest()[:16]
-
-
 def build_canonical_direction_bank(
     model: Any,
     tokenizer: Any,
@@ -591,7 +587,6 @@ def build_canonical_direction_bank(
                 "layer_index": resolved_layer,
                 "subspace_dim": subspace_dim,
                 "direction_l2": float(np.linalg.norm(vector)),
-                "direction_sha256": _fingerprint(vector),
                 "shared_explained_variance": float(source_row["shared_explained_variance"]),
                 "basis_protocol": source_row.get("basis_protocol", "in_sample"),
                 "basis_source_contrasts": source_row.get("basis_source_contrasts", "__all__"),
@@ -618,7 +613,6 @@ def build_canonical_direction_bank(
                 "layer_index": resolved_layer,
                 "subspace_dim": 0,
                 "direction_l2": 0.0,
-                "direction_sha256": _fingerprint(vector),
                 "shared_explained_variance": np.nan,
                 "n_train_pairs": int(train_pairs[train_pairs["pair_type"].eq(pair_type)]["pair_id"].nunique()),
             }
@@ -652,7 +646,6 @@ def evaluate_fixed_directions(
         choice_letters=choice_letters,
     )
     base_prediction = baseline.argmax(axis=1)
-    fingerprints = direction_inventory.set_index(["pair_type", "mode"])["direction_sha256"].to_dict()
     extraction_mappings = direction_inventory.set_index(["pair_type", "mode"])[
         "extraction_mapping"
     ].to_dict()
@@ -711,7 +704,6 @@ def evaluate_fixed_directions(
                         "injection_position": injection_position,
                         "layer_index": int(layer_index),
                         "alpha": float(alpha),
-                        "direction_sha256": fingerprints[(pair_type, mode)],
                         "base_semantic_target_prob": float(subset_base[index, semantic_choice]),
                         "patched_semantic_target_prob": float(patched[index, semantic_choice]),
                         "delta_semantic_target_prob": float(

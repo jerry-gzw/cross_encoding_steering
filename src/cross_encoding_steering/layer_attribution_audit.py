@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -141,12 +140,6 @@ class LayerAttributionAuditConfig:
         return self.mapping_audit.output_dir
 
 
-def _fingerprint(vector: np.ndarray) -> str:
-    return hashlib.sha256(
-        np.asarray(vector, dtype=np.float32).tobytes()
-    ).hexdigest()[:16]
-
-
 def _mean_oriented_gradient(
     gradients: np.ndarray,
     inventory: pd.DataFrame,
@@ -267,7 +260,6 @@ def build_layer_direction_bank(
                     ),
                     "n_gradient_vectors": n_gradient_vectors,
                     "readout_subspace_rank": int(readout_basis.shape[1]),
-                    "direction_sha256": _fingerprint(vector),
                 }
             )
     if not directions:

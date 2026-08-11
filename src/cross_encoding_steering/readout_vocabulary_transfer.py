@@ -7,7 +7,6 @@ the basis, rank, layer, position, or dose.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import traceback
 from dataclasses import dataclass
@@ -119,18 +118,10 @@ class ReadoutVocabularyTransferConfig:
         return self.factorial.audit.output_dir
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _load_source_directions(
     config: ReadoutVocabularyTransferConfig,
     model_config: Any,
-) -> tuple[dict[tuple[str, str], np.ndarray], pd.DataFrame, str]:
+) -> tuple[dict[tuple[str, str], np.ndarray], pd.DataFrame]:
     alias = model_config.model.alias
     model_dir = config.source_readout_dir / alias
     arrays_path = model_dir / "readout_geometry_arrays.npz"
@@ -184,16 +175,13 @@ def _load_source_directions(
     inventory = inventory[inventory["mode"].isin(config.enabled_modes)].copy()
     inventory["source_basis_identifier_set"] = config.source_basis_identifier_set
     inventory["source_arrays_path"] = str(arrays_path)
-    source_hash = _sha256(arrays_path)
-    inventory["source_arrays_sha256"] = source_hash
     inventory["transfer_protocol"] = "frozen_abc_basis_cross_vocabulary"
-    return directions, inventory, source_hash
+    return directions, inventory
 
 
 def _model_run_complete(
     model_dir: Path,
     *,
-    source_hash: str,
     enabled_modes: tuple[str, ...],
 ) -> bool:
     path = model_dir / "readout_vocabulary_transfer_run_complete.csv"
@@ -201,9 +189,7 @@ def _model_run_complete(
         return False
     completion = pd.read_csv(path)
     return (
-        set(completion.get("source_arrays_sha256", pd.Series(dtype=str)).astype(str))
-        == {source_hash}
-        and set(completion.get("enabled_modes", pd.Series(dtype=str)).astype(str))
+        set(completion.get("enabled_modes", pd.Series(dtype=str)).astype(str))
         == {",".join(enabled_modes)}
         and set(completion.get("status", pd.Series(dtype=str)).astype(str))
         == {"complete"}
@@ -230,7 +216,7 @@ def run_single_model_readout_vocabulary_transfer(
     alias = model_config.model.alias
     model_dir = config.output_dir / alias
     model_dir.mkdir(parents=True, exist_ok=True)
-    directions, inventory, source_hash = _load_source_directions(config, model_config)
+    directions, inventory = _load_source_directions(config, model_config)
 
     base_items = load_base_items(audit.dataset, seed=audit.runtime.seed)
     eval_items = _build_eval_items(base_items, _cross_interface_view(factorial))
@@ -252,8 +238,7 @@ def run_single_model_readout_vocabulary_transfer(
                 cached = pd.read_csv(steering_path)
                 completion = pd.read_csv(complete_path)
                 cached_modes = set(cached["mode"].dropna().astype(str).unique())
-                cached_hash = set(completion["source_arrays_sha256"].astype(str))
-                if cached_modes != set(config.enabled_modes) or cached_hash != {source_hash}:
+                if cached_modes != set(config.enabled_modes):
                     raise RuntimeError(
                         f"Incompatible cache at {condition_dir}; use a fresh output directory"
                     )
@@ -283,7 +268,6 @@ def run_single_model_readout_vocabulary_transfer(
                                 "condition": condition.name,
                                 "template": template.name,
                                 "status": "complete",
-                                "source_arrays_sha256": source_hash,
                                 "source_basis_identifier_set": config.source_basis_identifier_set,
                                 "enabled_modes": ",".join(config.enabled_modes),
                             }
@@ -319,7 +303,6 @@ def run_single_model_readout_vocabulary_transfer(
                 "n_semantic_mappings": len(factorial.mapping_names),
                 "locked_layer": model_config.locked_layer,
                 "locked_alpha": model_config.locked_alpha,
-                "source_arrays_sha256": source_hash,
                 "source_basis_identifier_set": config.source_basis_identifier_set,
                 "enabled_modes": ",".join(config.enabled_modes),
             }
@@ -804,11 +787,10 @@ def run_readout_vocabulary_transfer(
         model_dir = config.output_dir / public_model.alias
         source_error: Exception | None = None
         try:
-            _, _, source_hash = _load_source_directions(config, model_config)
+            _load_source_directions(config, model_config)
             if (
                 _model_run_complete(
                     model_dir,
-                    source_hash=source_hash,
                     enabled_modes=config.enabled_modes,
                 )
                 and not config.factorial.audit.runtime.force_rerun
