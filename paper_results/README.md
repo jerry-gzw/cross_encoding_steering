@@ -32,6 +32,15 @@ outputs are regenerated under `outputs/`.
 - `appendix_readout_group_cluster_bootstrap_ci.csv`
 - `appendix_readout_random_controls.csv`
 - `appendix_readout_rank_selection.csv`
+- `appendix_readout_baseline_global_summary.csv`
+- `appendix_readout_baseline_model_summary.csv`
+- `appendix_readout_baseline_mapping_mode_ci.csv`
+- `appendix_readout_baseline_cosines.csv`
+- `appendix_readout_vocabulary_transfer_component_ci.csv`
+- `appendix_readout_vocabulary_transfer_retention_ci.csv`
+- `appendix_readout_vocabulary_transfer_vocabulary_contrast_ci.csv`
+- `appendix_readout_vocabulary_transfer_by_model.csv`
+- `appendix_readout_vocabulary_transfer_common_competence.csv`
 
 ## Cross-method, mapping balance, and task scope
 
@@ -45,6 +54,13 @@ outputs are regenerated under `outputs/`.
 - `appendix_mapping_balanced_factorial_raw_vs_balanced_group_cluster_ci.csv`
 - `appendix_per_contrast_sc101.csv`
 - `appendix_per_contrast_mic.csv`
+- `main_mnli_cross_encoding_summary.csv`
+- `appendix_mnli_cross_encoding_by_mapping.csv`
+- `appendix_mnli_cross_encoding_by_model.csv`
+- `appendix_mnli_cross_encoding_by_model_mapping.csv`
+- `appendix_mnli_baseline_competence.csv`
+- `appendix_mnli_leave_one_model_out.csv`
+- `appendix_mnli_experiment_integrity.csv`
 
 ## Claim-boundary checks
 
@@ -62,3 +78,6 @@ outputs are regenerated under `outputs/`.
 `figures/` contains PNG and editable SVG copies of the reported quantitative
 figures. The conceptual overview is authored separately from these experiment
 outputs.
+
+`MANIFEST.csv` lists every file in this directory except the manifest itself,
+together with its byte size and SHA-256 digest.

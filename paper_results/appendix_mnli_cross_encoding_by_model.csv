@@ -1,0 +1,5 @@
+model_alias,model_label,current_label_effect,extraction_id_effect,id_advantage,positive_id_advantage_mappings,negative_id_advantage_mappings,n_alternative_mappings,profile
+qwen2_5_7b_instruct,Qwen,4.676305144106348,2.7098251410408154,-1.9664800030655332,0,5,5,Current label
+llama3_1_8b_instruct,Llama,-0.1459706948863136,1.1273307883077197,1.2733014831940335,5,0,5,Extraction ID
+mistral7b_instruct_v03,Mistral,-0.47828772544860837,2.173488487932417,2.6517762133810256,5,0,5,Extraction ID
+gemma2_9b_it,Gemma,-0.07799219555324984,3.011676894293891,3.089669089847141,5,0,5,Extraction ID

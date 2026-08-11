@@ -1,0 +1,5 @@
+model_alias,n_eval_rows,n_interfaces,n_modes,n_random_directions,n_contrasts,n_templates,n_baseline_rows,max_id_advantage_identity_error,complete
+gemma2_9b_it,331776,6,6,5,3,3,54216,0.0,True
+llama3_1_8b_instruct,331776,6,6,5,3,3,54216,0.0,True
+mistral7b_instruct_v03,331776,6,6,5,3,3,54216,0.0,True
+qwen2_5_7b_instruct,331776,6,6,5,3,3,54216,7.105427357601002e-15,True

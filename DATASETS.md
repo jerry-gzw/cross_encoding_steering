@@ -39,9 +39,11 @@ grouping; they are not treated as strict counterfactual contexts.
 - Required fields: `sentence1`, `sentence2`, `gold_label`.
 - Labels: `contradiction`, `neutral`, `entailment`.
 
-The control matches examples sharing the same premise and carrying different
-relation labels. It is a non-norm comparison for the cross-encoding evaluation,
-not a general NLI benchmark claim.
+The audit matches examples sharing the same premise and carrying different
+relation labels, assigns complete premise groups to disjoint splits, extracts
+one direction under the E/N/C mapping, and evaluates all six A/B/C mappings
+without re-extraction. It is a non-norm comparison for the cross-encoding
+evaluation, not a general NLI benchmark claim.
 
 ## Moral Integrity Corpus (MIC)
 

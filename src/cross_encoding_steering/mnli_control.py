@@ -1,4 +1,4 @@
-"""Matched three-way MNLI control for cross-encoding steering effects."""
+"""Matched three-way MNLI control for cross-interface steering effects."""
 from __future__ import annotations
 
 import hashlib
@@ -72,6 +72,9 @@ class MnliControlConfig:
     batch_size: int
     max_length: int
     seed: int
+    random_seeds: tuple[int, ...]
+    attribution_analysis: bool
+    include_inverse_control: bool
     force_rerun: bool
     n_boot: int
     confidence: float
@@ -113,7 +116,7 @@ class MnliControlConfig:
             for item in data.get("interfaces", [])
         )
         if not interfaces:
-            raise ValueError("MNLI control requires at least one answer encoding")
+            raise ValueError("MNLI control requires at least one answer interface")
         for interface in interfaces:
             if interface.kind not in {"letter_mcq", "completion"}:
                 raise ValueError(f"Unsupported MNLI interface kind: {interface.kind}")
@@ -146,6 +149,9 @@ class MnliControlConfig:
             raise ValueError("primary_score must be sum_logprob or mean_logprob")
         runtime = dict(data.get("runtime", {}))
         statistics = dict(data.get("statistics", {}))
+        random_seeds = tuple(int(value) for value in data.get("random_seeds", []))
+        if len(set(random_seeds)) != len(random_seeds):
+            raise ValueError("random_seeds must not contain duplicates")
         n_boot = int(statistics.get("n_boot", 10_000))
         confidence = float(statistics.get("confidence", 0.95))
         if n_boot < 100:
@@ -170,6 +176,9 @@ class MnliControlConfig:
             batch_size=int(runtime.get("batch_size", 2)),
             max_length=int(runtime.get("max_length", 512)),
             seed=int(runtime.get("seed", 13)),
+            random_seeds=random_seeds,
+            attribution_analysis=bool(data.get("attribution_analysis", False)),
+            include_inverse_control=bool(data.get("include_inverse_control", True)),
             force_rerun=bool(runtime.get("force_rerun", False)),
             n_boot=n_boot,
             confidence=confidence,
@@ -320,6 +329,7 @@ def _endpoint_table(pairs: pd.DataFrame, split: str) -> pd.DataFrame:
             rows.append(
                 {
                     "pair_id": pair.pair_id,
+                    "group_id": pair.group_id,
                     "pair_type": pair.pair_type,
                     "endpoint": endpoint,
                     "direction_sign": sign,
@@ -359,7 +369,7 @@ def _extract_directions(
     )
     item_index = {item_id: index for index, item_id in enumerate(unique["item_id"].astype(str))}
     hidden = activations[resolved]
-    rng = np.random.default_rng(config.seed + resolved)
+    legacy_rng = np.random.default_rng(config.seed + resolved)
     directions: dict[tuple[str, str], np.ndarray] = {}
     inventory = []
     for contrast in config.contrasts:
@@ -368,13 +378,29 @@ def _extract_directions(
         target_indices = [item_index[str(value)] for value in group["target_item_id"]]
         raw = (hidden[target_indices] - hidden[source_indices]).mean(axis=0).astype(np.float32)
         norm = float(np.linalg.norm(raw))
-        random = rng.normal(size=raw.shape).astype(np.float32)
-        random = random / max(float(np.linalg.norm(random)), 1e-8) * norm
         modes = {
             "raw_mnli_direction": raw,
-            "random_direction_control": random.astype(np.float32),
-            "inverse_direction_control": -raw,
         }
+        random_seed_by_mode: dict[str, int | None] = {
+            "raw_mnli_direction": None,
+        }
+        if config.include_inverse_control:
+            modes["inverse_direction_control"] = -raw
+            random_seed_by_mode["inverse_direction_control"] = None
+        if config.random_seeds:
+            for random_seed in config.random_seeds:
+                seed = _stable_hash(contrast.name, random_seed + resolved) % (2**32)
+                rng = np.random.default_rng(seed)
+                random = rng.normal(size=raw.shape).astype(np.float32)
+                random = random / max(float(np.linalg.norm(random)), 1e-8) * norm
+                mode = f"random_direction_control_seed_{random_seed}"
+                modes[mode] = random.astype(np.float32)
+                random_seed_by_mode[mode] = random_seed
+        else:
+            random = legacy_rng.normal(size=raw.shape).astype(np.float32)
+            random = random / max(float(np.linalg.norm(random)), 1e-8) * norm
+            modes["random_direction_control"] = random.astype(np.float32)
+            random_seed_by_mode["random_direction_control"] = config.seed
         for mode, vector in modes.items():
             directions[(contrast.name, mode)] = vector
             inventory.append(
@@ -383,6 +409,7 @@ def _extract_directions(
                     "source_label": contrast.source_label,
                     "target_label": contrast.target_label,
                     "mode": mode,
+                    "random_seed": random_seed_by_mode[mode],
                     "extraction_interface": canonical.name,
                     "extraction_template": template.name,
                     "layer_index": resolved,
@@ -401,11 +428,13 @@ def _evaluate(
     directions: dict[tuple[str, str], np.ndarray],
     config: MnliControlConfig,
     model_cfg: MnliModelRun,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     endpoints = _endpoint_table(pairs, "test")
-    rows, tokens = [], []
+    rows, tokens, baseline_rows = [], [], []
+    canonical_candidates = _candidate_values(_canonical_interface(config))
     for interface in config.interfaces:
         candidates = _candidate_values(interface)
+        identifier_to_label = {value: label for label, value in candidates.items()}
         for template in config.templates:
             prefixes = [_interface_prefix(row, template, interface) for _, row in endpoints.iterrows()]
             completions = [[" " + candidates[label] for label in MNLI_LABELS] for _ in prefixes]
@@ -413,6 +442,29 @@ def _evaluate(
                 model, tokenizer, prefixes, completions,
                 batch_size=config.batch_size, max_length=config.max_length,
             )
+            base_primary = base_mean if config.primary_score == "mean_logprob" else base_sum
+            predicted = np.argmax(base_primary, axis=1)
+            for index, item in endpoints.iterrows():
+                gold_index = MNLI_LABELS.index(item.base_label)
+                other = np.delete(base_primary[index], gold_index)
+                baseline_rows.append(
+                    {
+                        "group_id": item.group_id,
+                        "item_id": item.item_id,
+                        "pair_id": item.pair_id,
+                        "pair_type": item.pair_type,
+                        "interface": interface.name,
+                        "interface_kind": interface.kind,
+                        "template": template.name,
+                        "gold_label": item.base_label,
+                        "predicted_label": MNLI_LABELS[int(predicted[index])],
+                        "correct": bool(int(predicted[index]) == gold_index),
+                        "gold_vs_runner_up_margin": float(
+                            base_primary[index, gold_index] - np.max(other)
+                        ),
+                        "score_normalization": config.primary_score,
+                    }
+                )
             for label_index, label in enumerate(MNLI_LABELS):
                 for count in np.unique(counts[:, label_index]):
                     tokens.append(
@@ -450,9 +502,25 @@ def _evaluate(
                         source = MNLI_LABELS.index(item.base_label)
                         base_margin = base_scores[index, target] - base_scores[index, source]
                         patched_margin = patched_scores[index, target] - patched_scores[index, source]
+                        current_label_effect = float(patched_margin - base_margin)
+                        extraction_target_id = canonical_candidates[item.target_label]
+                        extraction_source_id = canonical_candidates[item.base_label]
+                        id_target_label = identifier_to_label.get(extraction_target_id)
+                        id_source_label = identifier_to_label.get(extraction_source_id)
+                        if id_target_label is not None and id_source_label is not None:
+                            id_target = MNLI_LABELS.index(id_target_label)
+                            id_source = MNLI_LABELS.index(id_source_label)
+                            base_id_margin = base_scores[index, id_target] - base_scores[index, id_source]
+                            patched_id_margin = patched_scores[index, id_target] - patched_scores[index, id_source]
+                            extraction_id_effect = float(patched_id_margin - base_id_margin)
+                            id_advantage = extraction_id_effect - current_label_effect
+                        else:
+                            base_id_margin = patched_id_margin = np.nan
+                            extraction_id_effect = id_advantage = np.nan
                         rows.append(
                             {
                                 "pair_id": item.pair_id,
+                                "group_id": item.group_id,
                                 "pair_type": item.pair_type,
                                 "endpoint": item.endpoint,
                                 "direction_sign": sign,
@@ -464,11 +532,21 @@ def _evaluate(
                                 "target_label": item.target_label,
                                 "base_target_margin": float(base_margin),
                                 "patched_target_margin": float(patched_margin),
-                                "target_margin_gain": float(patched_margin - base_margin),
+                                "target_margin_gain": current_label_effect,
+                                "current_label_effect": current_label_effect,
+                                "extraction_target_id": extraction_target_id,
+                                "extraction_source_id": extraction_source_id,
+                                "base_extraction_id_margin": float(base_id_margin),
+                                "patched_extraction_id_margin": float(patched_id_margin),
+                                "extraction_id_effect": extraction_id_effect,
+                                "id_advantage": id_advantage,
                                 "score_normalization": config.primary_score,
                             }
                         )
-    return pd.DataFrame(rows), pd.DataFrame(tokens).drop_duplicates()
+    baseline = pd.DataFrame(baseline_rows).drop_duplicates(
+        ["item_id", "interface", "template"]
+    )
+    return pd.DataFrame(rows), pd.DataFrame(tokens).drop_duplicates(), baseline
 
 
 def _summaries(rows: pd.DataFrame, config: MnliControlConfig) -> dict[str, pd.DataFrame]:
@@ -479,16 +557,39 @@ def _summaries(rows: pd.DataFrame, config: MnliControlConfig) -> dict[str, pd.Da
             "mnli_interface_retention": pd.DataFrame(),
         }
     group_prefix = ["model_alias", "model_name"] if "model_alias" in rows else []
+    metric_columns = [
+        column
+        for column in (
+            "target_margin_gain",
+            "current_label_effect",
+            "extraction_id_effect",
+            "id_advantage",
+        )
+        if column in rows.columns
+    ]
+    pair_identity = ["group_id", "pair_id"] if "group_id" in rows.columns else ["pair_id"]
     pair = (
         rows.groupby(
-            [*group_prefix, "pair_id", "pair_type", "mode", "interface", "interface_kind", "template"],
+            [
+                *group_prefix,
+                *pair_identity,
+                "pair_type",
+                "mode",
+                "interface",
+                "interface_kind",
+                "template",
+            ],
             as_index=False,
         )
-        .agg(target_margin_gain=("target_margin_gain", "mean"))
+        .agg(**{column: (column, "mean") for column in metric_columns})
     )
     summary = (
         pair.groupby([*group_prefix, "mode", "interface", "interface_kind", "template", "pair_type"], as_index=False)
-        .agg(n_pairs=("pair_id", "nunique"), target_margin_gain=("target_margin_gain", "mean"))
+        .agg(
+            n_pairs=("pair_id", "nunique"),
+            **({"n_groups": ("group_id", "nunique")} if "group_id" in pair else {}),
+            **{column: (column, "mean") for column in metric_columns},
+        )
     )
     reference = pair[pair["interface"].eq(config.reference_interface)].rename(
         columns={"target_margin_gain": "reference_gain"}
@@ -511,6 +612,94 @@ def _summaries(rows: pd.DataFrame, config: MnliControlConfig) -> dict[str, pd.Da
         "mnli_interface_summary": summary,
         "mnli_interface_retention": retention,
     }
+
+
+def _summarize_baseline_accuracy(rows: pd.DataFrame) -> pd.DataFrame:
+    if rows.empty:
+        return pd.DataFrame()
+    per_item = (
+        rows.groupby(
+            ["model_alias", "model_name", "group_id", "item_id", "interface", "interface_kind"],
+            as_index=False,
+        )
+        .agg(
+            template_accuracy=("correct", "mean"),
+            n_templates=("template", "nunique"),
+        )
+    )
+    return (
+        per_item.groupby(
+            ["model_alias", "model_name", "interface", "interface_kind"],
+            as_index=False,
+        )
+        .agg(
+            baseline_accuracy=("template_accuracy", "mean"),
+            n_items=("item_id", "nunique"),
+            n_groups=("group_id", "nunique"),
+        )
+    )
+
+
+def _validate_attribution_outputs(
+    rows: pd.DataFrame,
+    baseline: pd.DataFrame,
+    config: MnliControlConfig,
+) -> pd.DataFrame:
+    if not config.attribution_analysis:
+        return pd.DataFrame()
+    expected_models = {item.model.alias for item in config.models}
+    expected_interfaces = {item.name for item in config.interfaces}
+    expected_randoms = {
+        f"random_direction_control_seed_{seed}" for seed in config.random_seeds
+    }
+    observed_models = set(rows.get("model_alias", pd.Series(dtype=str)).astype(str))
+    missing_models = sorted(expected_models - observed_models)
+    if missing_models:
+        raise RuntimeError(f"MNLI attribution is missing model outputs: {missing_models}")
+    if baseline.empty or "model_alias" not in baseline:
+        raise RuntimeError("MNLI attribution is missing baseline-competence rows")
+    records = []
+    for model_alias in sorted(expected_models):
+        model_rows = rows[rows["model_alias"].astype(str).eq(model_alias)]
+        model_baseline = baseline[baseline["model_alias"].astype(str).eq(model_alias)]
+        interfaces = set(model_rows["interface"].astype(str))
+        random_modes = {
+            mode
+            for mode in model_rows["mode"].astype(str).unique()
+            if mode.startswith("random_direction_control")
+        }
+        required_metrics = model_rows[
+            ["current_label_effect", "extraction_id_effect", "id_advantage"]
+        ]
+        if required_metrics.isna().any().any():
+            raise RuntimeError(f"MNLI attribution contains missing metrics for {model_alias}")
+        identity_error = (
+            model_rows["id_advantage"]
+            - (model_rows["extraction_id_effect"] - model_rows["current_label_effect"])
+        ).abs().max()
+        record = {
+            "model_alias": model_alias,
+            "n_eval_rows": len(model_rows),
+            "n_interfaces": len(interfaces),
+            "n_modes": int(model_rows["mode"].nunique()),
+            "n_random_directions": len(random_modes),
+            "n_contrasts": int(model_rows["pair_type"].nunique()),
+            "n_templates": int(model_rows["template"].nunique()),
+            "n_baseline_rows": len(model_baseline),
+            "max_id_advantage_identity_error": float(identity_error),
+            "complete": bool(
+                interfaces == expected_interfaces
+                and random_modes == expected_randoms
+                and set(model_baseline["interface"].astype(str)) == expected_interfaces
+                and identity_error < 1e-6
+            ),
+        }
+        records.append(record)
+    inventory = pd.DataFrame(records)
+    if not inventory["complete"].all():
+        failed = inventory.loc[~inventory["complete"], "model_alias"].tolist()
+        raise RuntimeError(f"MNLI attribution integrity check failed for: {failed}")
+    return inventory
 
 
 def _equal_strata_bootstrap(
@@ -691,6 +880,246 @@ def build_mnli_paired_statistics(
     }
 
 
+def _cluster_bootstrap_record(
+    frame: pd.DataFrame,
+    *,
+    value_column: str,
+    stratum_columns: list[str],
+    config: MnliControlConfig,
+    seed_key: str,
+) -> dict[str, Any]:
+    columns = [*stratum_columns, "group_id", value_column]
+    cells = frame[columns].dropna(subset=[value_column]).copy()
+    if cells.empty:
+        return {
+            "estimate": np.nan,
+            "ci_low": np.nan,
+            "ci_high": np.nan,
+            "ci_excludes_zero": False,
+            "n_groups": 0,
+            "n_strata": 0,
+            "confidence": config.confidence,
+            "estimand": "equal_strata_premise_cluster_bootstrap",
+        }
+    if not stratum_columns:
+        cells["_stratum"] = "all"
+        stratum_columns = ["_stratum"]
+    cells = (
+        cells.groupby([*stratum_columns, "group_id"], as_index=False)[value_column]
+        .mean()
+    )
+    clusters = sorted(cells["group_id"].astype(str).unique())
+    strata = list(cells[stratum_columns].drop_duplicates().itertuples(index=False, name=None))
+    cluster_index = {value: index for index, value in enumerate(clusters)}
+    stratum_index = {value: index for index, value in enumerate(strata)}
+    matrix = np.full((len(strata), len(clusters)), np.nan, dtype=np.float64)
+    for _, row in cells.iterrows():
+        stratum = tuple(row[column] for column in stratum_columns)
+        matrix[stratum_index[stratum], cluster_index[str(row["group_id"])]] = float(
+            row[value_column]
+        )
+    estimate = float(np.nanmean(np.nanmean(matrix, axis=1)))
+    rng_seed = _stable_hash(seed_key, config.seed + 303) % (2**32)
+    rng = np.random.default_rng(rng_seed)
+    boot = np.empty(config.n_boot, dtype=np.float64)
+    chunk_size = min(config.bootstrap_chunk_size, 250)
+    for start in range(0, config.n_boot, chunk_size):
+        stop = min(start + chunk_size, config.n_boot)
+        indices = rng.integers(
+            0,
+            len(clusters),
+            size=(stop - start, len(clusters)),
+        )
+        sampled = matrix[:, indices]
+        with np.errstate(invalid="ignore"):
+            stratum_means = np.nanmean(sampled, axis=2)
+            boot[start:stop] = np.nanmean(stratum_means, axis=0)
+    tail = (1.0 - config.confidence) / 2.0
+    low = float(np.nanquantile(boot, tail))
+    high = float(np.nanquantile(boot, 1.0 - tail))
+    return {
+        "estimate": estimate,
+        "ci_low": low,
+        "ci_high": high,
+        "ci_excludes_zero": bool(low > 0 or high < 0),
+        "n_groups": len(clusters),
+        "n_strata": len(strata),
+        "confidence": config.confidence,
+        "estimand": "equal_strata_premise_cluster_bootstrap",
+    }
+
+
+def build_mnli_attribution_statistics(
+    pair_effects: pd.DataFrame,
+    baseline_rows: pd.DataFrame,
+    config: MnliControlConfig,
+) -> dict[str, pd.DataFrame]:
+    metrics = ["current_label_effect", "extraction_id_effect", "id_advantage"]
+    required = {
+        "model_alias",
+        "model_name",
+        "group_id",
+        "pair_id",
+        "pair_type",
+        "mode",
+        "interface",
+        "template",
+        *metrics,
+    }
+    missing = sorted(required - set(pair_effects.columns))
+    if missing:
+        raise ValueError(f"MNLI attribution rows are missing columns: {missing}")
+    keys = ["model_alias", "model_name", "group_id", "pair_id", "pair_type", "interface"]
+    pair = (
+        pair_effects.groupby([*keys, "mode"], as_index=False)
+        .agg(
+            **{metric: (metric, "mean") for metric in metrics},
+            n_templates=("template", "nunique"),
+        )
+    )
+    raw = pair[pair["mode"].eq("raw_mnli_direction")].copy()
+    random = pair[pair["mode"].astype(str).str.startswith("random_direction_control")].copy()
+    if raw.empty or random.empty:
+        raise ValueError("MNLI attribution requires canonical CAA and random-direction rows")
+    random_mean = (
+        random.groupby(keys, as_index=False)
+        .agg(
+            **{metric: (metric, "mean") for metric in metrics},
+            n_random_directions=("mode", "nunique"),
+        )
+        .rename(columns={metric: f"random_{metric}" for metric in metrics})
+    )
+    adjusted = raw.merge(random_mean, on=keys, how="inner", validate="one_to_one")
+    for metric in metrics:
+        adjusted[f"raw_{metric}"] = adjusted[metric]
+        adjusted[metric] = adjusted[metric] - adjusted[f"random_{metric}"]
+    if adjusted["n_random_directions"].nunique() != 1:
+        raise ValueError("MNLI attribution has inconsistent random-control counts")
+
+    ci_rows: list[dict[str, Any]] = []
+    for (interface, metric), group in (
+        adjusted.melt(
+            id_vars=keys,
+            value_vars=metrics,
+            var_name="metric",
+            value_name="effect",
+        )
+        .groupby(["interface", "metric"], sort=True)
+    ):
+        record = {"scope": "pooled", "model_alias": "all", "interface": interface, "metric": metric}
+        record.update(
+            _cluster_bootstrap_record(
+                group,
+                value_column="effect",
+                stratum_columns=["model_alias", "pair_type"],
+                config=config,
+                seed_key=f"pooled:{interface}:{metric}",
+            )
+        )
+        ci_rows.append(record)
+    for (model_alias, interface, metric), group in (
+        adjusted.melt(
+            id_vars=keys,
+            value_vars=metrics,
+            var_name="metric",
+            value_name="effect",
+        )
+        .groupby(["model_alias", "interface", "metric"], sort=True)
+    ):
+        record = {
+            "scope": "model",
+            "model_alias": model_alias,
+            "interface": interface,
+            "metric": metric,
+        }
+        record.update(
+            _cluster_bootstrap_record(
+                group,
+                value_column="effect",
+                stratum_columns=["pair_type"],
+                config=config,
+                seed_key=f"model:{model_alias}:{interface}:{metric}",
+            )
+        )
+        ci_rows.append(record)
+    ci = pd.DataFrame(ci_rows)
+
+    pooled = ci[ci["scope"].eq("pooled")].copy()
+    decision = pooled.pivot(index="interface", columns="metric", values="estimate").reset_index()
+    id_ci = pooled[pooled["metric"].eq("id_advantage")][
+        ["interface", "ci_low", "ci_high", "ci_excludes_zero"]
+    ].rename(
+        columns={
+            "ci_low": "id_advantage_ci_low",
+            "ci_high": "id_advantage_ci_high",
+            "ci_excludes_zero": "id_advantage_ci_excludes_zero",
+        }
+    )
+    decision = decision.merge(id_ci, on="interface", how="left", validate="one_to_one")
+    decision["profile"] = np.where(
+        decision["id_advantage_ci_low"].gt(0),
+        "extraction_id_dominant",
+        np.where(
+            decision["id_advantage_ci_high"].lt(0),
+            "current_label_dominant",
+            "mixed_or_unresolved",
+        ),
+    )
+
+    leave_one_out = []
+    for held_out in sorted(adjusted["model_alias"].astype(str).unique()):
+        selected = adjusted[adjusted["model_alias"].astype(str).ne(held_out)]
+        for interface, group in selected.groupby("interface", sort=True):
+            stratum_means = group.groupby(["model_alias", "pair_type"])[metrics].mean()
+            record = {
+                "held_out_model": held_out,
+                "interface": interface,
+                "n_models": int(group["model_alias"].nunique()),
+                "n_contrasts": int(group["pair_type"].nunique()),
+            }
+            record.update({metric: float(stratum_means[metric].mean()) for metric in metrics})
+            leave_one_out.append(record)
+
+    baseline_ci_rows = []
+    if not baseline_rows.empty:
+        baseline_items = (
+            baseline_rows.groupby(
+                ["model_alias", "model_name", "group_id", "item_id", "interface"],
+                as_index=False,
+            )
+            .agg(accuracy=("correct", "mean"), n_templates=("template", "nunique"))
+        )
+        for (model_alias, model_name, interface), group in baseline_items.groupby(
+            ["model_alias", "model_name", "interface"], sort=True
+        ):
+            record = {
+                "model_alias": model_alias,
+                "model_name": model_name,
+                "interface": interface,
+                "n_items": int(group["item_id"].nunique()),
+            }
+            record.update(
+                _cluster_bootstrap_record(
+                    group,
+                    value_column="accuracy",
+                    stratum_columns=[],
+                    config=config,
+                    seed_key=f"baseline:{model_alias}:{interface}",
+                )
+            )
+            record["chance_accuracy"] = 1.0 / len(MNLI_LABELS)
+            record["ci_above_chance"] = bool(record["ci_low"] > record["chance_accuracy"])
+            baseline_ci_rows.append(record)
+
+    return {
+        "mnli_attribution_random_adjusted_pairs": adjusted,
+        "mnli_attribution_group_cluster_ci": ci,
+        "mnli_attribution_decision": decision,
+        "mnli_attribution_leave_one_model_out": pd.DataFrame(leave_one_out),
+        "mnli_baseline_accuracy_group_cluster_ci": pd.DataFrame(baseline_ci_rows),
+    }
+
+
 def run_mnli_statistics_from_json(
     config_path: str | Path,
     *,
@@ -700,7 +1129,22 @@ def run_mnli_statistics_from_json(
     pair_path = config.output_dir / "mnli_pair_effects.csv"
     if not pair_path.exists():
         raise FileNotFoundError(f"MNLI pair effects do not exist: {pair_path}")
-    tables = build_mnli_paired_statistics(pd.read_csv(pair_path), config)
+    pair_effects = pd.read_csv(pair_path)
+    if config.attribution_analysis:
+        baseline_path = config.output_dir / "mnli_baseline_rows.csv"
+        if not baseline_path.exists():
+            raise FileNotFoundError(f"MNLI baseline rows do not exist: {baseline_path}")
+        tables = build_mnli_attribution_statistics(
+            pair_effects,
+            pd.read_csv(baseline_path),
+            config,
+        )
+        independent_unit = "normalized_premise_group"
+        estimand = "equal_model_equal_contrast_premise_cluster_bootstrap"
+    else:
+        tables = build_mnli_paired_statistics(pair_effects, config)
+        independent_unit = "matched_same_premise_pair"
+        estimand = "equal_model_equal_contrast_pair_bootstrap"
     tables["mnli_statistics_config"] = pd.DataFrame(
         [
             {
@@ -708,8 +1152,9 @@ def run_mnli_statistics_from_json(
                 "confidence": config.confidence,
                 "bootstrap_chunk_size": config.bootstrap_chunk_size,
                 "seed": config.seed,
-                "independent_unit": "matched_same_premise_pair",
-                "stratification": "equal_model_equal_contrast",
+                "independent_unit": independent_unit,
+                "stratification": estimand,
+                "random_seeds": ",".join(map(str, config.random_seeds)),
             }
         ]
     )
@@ -723,71 +1168,111 @@ def run_mnli_control_from_json(
     project_root: str | Path | None = None,
     model_source_overrides: dict[str, str] | None = None,
     model_aliases: Iterable[str] | None = None,
+    phase: str = "all",
 ) -> dict[str, pd.DataFrame]:
     config = MnliControlConfig.from_json(
         config_path,
         project_root=project_root,
         model_source_overrides=model_source_overrides,
     )
+    if phase not in {"run", "aggregate", "all"}:
+        raise ValueError("phase must be run, aggregate, or all")
     items = load_mnli_items(config)
     pairs = build_mnli_pairs(items, config)
     requested = set(model_aliases or [item.model.alias for item in config.models])
     errors = []
-    for model_cfg in config.models:
-        if model_cfg.model.alias not in requested:
-            continue
-        model_dir = config.output_dir / model_cfg.model.alias
-        if (model_dir / "mnli_run_complete.csv").exists() and not config.force_rerun:
-            continue
-        tokenizer = model = None
-        try:
-            tokenizer, model = load_tokenizer_and_model(
-                model_cfg.model.load_source,
-                device_map=model_cfg.model.device_map,
-                torch_dtype=model_cfg.model.torch_dtype,
-            )
-            directions, inventory = _extract_directions(model, tokenizer, pairs, config, model_cfg)
-            rows, tokenization = _evaluate(model, tokenizer, pairs, directions, config, model_cfg)
-            for frame in (rows, tokenization, inventory):
-                frame.insert(0, "model_alias", model_cfg.model.alias)
-                frame.insert(1, "model_name", model_cfg.model.name)
-            write_tables(
-                {
-                    "mnli_eval_rows": rows,
-                    "mnli_tokenization": tokenization,
-                    "mnli_direction_inventory": inventory,
-                    "mnli_run_complete": pd.DataFrame(
-                        [
-                            {
-                                "model_alias": model_cfg.model.alias,
-                                "status": "complete",
-                                "locked_layer": model_cfg.locked_layer,
-                                "locked_alpha": model_cfg.locked_alpha,
-                            }
-                        ]
-                    ),
-                },
-                model_dir,
-            )
-        except Exception as exc:
-            errors.append(
-                {
+    if phase in {"run", "all"}:
+        for model_cfg in config.models:
+            if model_cfg.model.alias not in requested:
+                continue
+            model_dir = config.output_dir / model_cfg.model.alias
+            if (model_dir / "mnli_run_complete.csv").exists() and not config.force_rerun:
+                continue
+            tokenizer = model = None
+            try:
+                tokenizer, model = load_tokenizer_and_model(
+                    model_cfg.model.load_source,
+                    device_map=model_cfg.model.device_map,
+                    torch_dtype=model_cfg.model.torch_dtype,
+                )
+                directions, inventory = _extract_directions(model, tokenizer, pairs, config, model_cfg)
+                rows, tokenization, baseline = _evaluate(
+                    model,
+                    tokenizer,
+                    pairs,
+                    directions,
+                    config,
+                    model_cfg,
+                )
+                for frame in (rows, tokenization, inventory, baseline):
+                    frame.insert(0, "model_alias", model_cfg.model.alias)
+                    frame.insert(1, "model_name", model_cfg.model.name)
+                write_tables(
+                    {
+                        "mnli_eval_rows": rows,
+                        "mnli_baseline_rows": baseline,
+                        "mnli_tokenization": tokenization,
+                        "mnli_direction_inventory": inventory,
+                        "mnli_run_complete": pd.DataFrame(
+                            [
+                                {
+                                    "model_alias": model_cfg.model.alias,
+                                    "status": "complete",
+                                    "locked_layer": model_cfg.locked_layer,
+                                    "locked_alpha": model_cfg.locked_alpha,
+                                    "n_interfaces": len(config.interfaces),
+                                    "n_random_directions": len(config.random_seeds) or 1,
+                                }
+                            ]
+                        ),
+                    },
+                    model_dir,
+                )
+            except Exception as exc:
+                error = {
                     "model_alias": model_cfg.model.alias,
                     "model_name": model_cfg.model.name,
                     "error_type": type(exc).__name__,
                     "error_message": str(exc),
                     "traceback": traceback.format_exc(),
                 }
+                errors.append(error)
+                write_tables({"mnli_error": pd.DataFrame([error])}, model_dir)
+            finally:
+                del model, tokenizer
+                cleanup_model()
+
+    if phase == "run":
+        if errors:
+            failed = ", ".join(error["model_alias"] for error in errors)
+            raise RuntimeError(f"MNLI model run failed for: {failed}")
+        complete = []
+        for alias in sorted(requested):
+            marker = config.output_dir / alias / "mnli_run_complete.csv"
+            if marker.exists():
+                complete.append(pd.read_csv(marker))
+        return {
+            "mnli_run_complete": (
+                pd.concat(complete, ignore_index=True, sort=False)
+                if complete
+                else pd.DataFrame()
             )
-        finally:
-            del model, tokenizer
-            cleanup_model()
+        }
 
     row_files = sorted(config.output_dir.glob("*/mnli_eval_rows.csv"))
+    baseline_files = sorted(config.output_dir.glob("*/mnli_baseline_rows.csv"))
     inventory_files = sorted(config.output_dir.glob("*/mnli_direction_inventory.csv"))
     token_files = sorted(config.output_dir.glob("*/mnli_tokenization.csv"))
     rows = pd.concat([pd.read_csv(path) for path in row_files], ignore_index=True, sort=False) if row_files else pd.DataFrame()
+    baseline = (
+        pd.concat([pd.read_csv(path) for path in baseline_files], ignore_index=True, sort=False)
+        if baseline_files
+        else pd.DataFrame()
+    )
+    attribution_integrity = _validate_attribution_outputs(rows, baseline, config)
     tables = _summaries(rows, config)
+    tables["mnli_baseline_summary"] = _summarize_baseline_accuracy(baseline)
+    tables["mnli_attribution_integrity"] = attribution_integrity
     pair_inventory = (
         pairs.groupby(["split", "pair_type"], as_index=False)
         .agg(
@@ -800,6 +1285,7 @@ def run_mnli_control_from_json(
     tables.update(
         {
             "mnli_eval_rows": rows,
+            "mnli_baseline_rows": baseline,
             "mnli_direction_inventory": pd.concat([pd.read_csv(path) for path in inventory_files], ignore_index=True, sort=False) if inventory_files else pd.DataFrame(),
             "mnli_tokenization": pd.concat([pd.read_csv(path) for path in token_files], ignore_index=True, sort=False) if token_files else pd.DataFrame(),
             "mnli_pair_inventory": pair_inventory,
@@ -813,10 +1299,15 @@ def run_mnli_control_from_json(
                         "pair_protocol": "same_premise_different_hypothesis",
                         "reference_interface": config.reference_interface,
                         "primary_score": config.primary_score,
+                        "attribution_analysis": config.attribution_analysis,
+                        "random_seeds": ",".join(map(str, config.random_seeds)),
                     }
                 ]
             ),
         }
     )
     write_tables(tables, config.output_dir)
+    if errors:
+        failed = ", ".join(error["model_alias"] for error in errors)
+        raise RuntimeError(f"MNLI model run failed for: {failed}")
     return tables

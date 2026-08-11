@@ -1,0 +1,5 @@
+pair_id,pair_type,group_key,negative_text,positive_text,identical_endpoint_text,context_cluster_id
+03f26c5b34b54e38,normal_vs_expected,animal shelter | volunteer,animal shelter volunteer [PERSON]'s role is 'animal shelter volunteer',animal shelter volunteer [PERSON]'s role is 'animal shelter volunteer',True,animal shelter | volunteer
+124f3f0d00a321dd,normal_vs_expected,hotel room | take your shoes off,hotel room take your shoes off [PERSON]'s role is 'guest',hotel room take your shoes off [PERSON]'s role is 'guest',True,hotel room | take your shoes off
+800f0b3c306c84df,normal_vs_expected,mental institution | have a conversation with a imaginary person,mental institution have a conversation with a imaginary person [PERSON]'s role is 'patient',mental institution have a conversation with a imaginary person [PERSON]'s role is 'patient',True,mental institution | have a conversation with a imaginary person
+a9740c27b4bf987e,taboo_vs_normal,doctors office | surf the internet,doctors office surf the internet [PERSON]'s role is 'receptionist',doctors office surf the internet [PERSON]'s role is 'receptionist',True,doctors office | surf the internet

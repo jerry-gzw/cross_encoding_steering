@@ -1,0 +1,2 @@
+alignment_key,n_expected_ids,n_annotator_1_ids,n_annotator_2_ids,n_id_aligned_rows,same_row_order,static_content_matches_after_id_alignment,behavior_mismatches,rubric_mismatches,question_mismatches,response_mismatches
+annotation_id,180,180,180,180,False,True,0,0,0,0

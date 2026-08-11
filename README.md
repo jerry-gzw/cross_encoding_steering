@@ -146,7 +146,10 @@ bash scripts/prepare_normbank.sh
 bash scripts/run_normbank_audit.sh
 bash scripts/run_validity_controls.sh
 
-# Same-premise non-norm control
+# Full six-mapping same-premise MNLI attribution reported in the paper
+bash scripts/run_mnli_exhaustive_attribution.sh
+
+# Additional direct-label and opaque-codeword MNLI comparison
 bash scripts/run_mnli_control.sh
 
 # Binary MIC extraction-position sensitivity (supplement)
@@ -171,6 +174,9 @@ NDD_HUMAN_ACTION=prepare-adjudication bash scripts/prepare_caa_human_validation.
 NDD_HUMAN_ACTION=summarize-adjudication bash scripts/prepare_caa_human_validation.sh
 ```
 
+The blinded scoring rubric and adjudication protocol are documented in
+[`docs/caa_open_ended_human_annotation_guideline.md`](docs/caa_open_ended_human_annotation_guideline.md).
+
 ## Models and locked layers
 
 The main NormBank intervention uses `alpha=0.8` at approximately 75% model
@@ -189,8 +195,9 @@ ITI heads and strength are selected on validation data.
 ## Reported assets
 
 `paper_results/` contains compact CSV copies of the reported summaries and the
-paper figures. Its README maps claims to files. Full pair-level outputs are
-regenerated under `outputs/` and are not committed.
+paper figures. Its README maps claims to files, and `MANIFEST.csv` records each
+asset's size and SHA-256 digest. Full pair-level outputs are regenerated under
+`outputs/` and are not committed.
 
 ## Validation
 
@@ -200,6 +207,7 @@ python -m cross_encoding_steering.cli --help
 ```
 
 ## Citation
+
 ```bibtex
 # TODO
 ```

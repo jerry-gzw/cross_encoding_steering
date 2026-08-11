@@ -163,13 +163,20 @@ def cmd_mnli(args: argparse.Namespace) -> None:
         project_root=args.project_root,
         model_source_overrides=_model_source_overrides(args.model_source_overrides),
         model_aliases=_aliases(args.models),
+        phase=args.phase,
     )
-    print(tables.get("mnli_interface_summary", pd.DataFrame()).to_string(index=False))
+    summary = tables.get("mnli_interface_summary", pd.DataFrame())
+    if summary.empty:
+        summary = tables.get("mnli_run_complete", pd.DataFrame())
+    print(summary.to_string(index=False) if not summary.empty else "No completed MNLI controls were aggregated")
 
 
 def cmd_mnli_statistics(args: argparse.Namespace) -> None:
     tables = run_mnli_statistics_from_json(args.config, project_root=args.project_root)
-    print(tables.get("mnli_global_bootstrap_ci", pd.DataFrame()).to_string(index=False))
+    summary = tables.get("mnli_attribution_decision", pd.DataFrame())
+    if summary.empty:
+        summary = tables.get("mnli_global_bootstrap_ci", pd.DataFrame())
+    print(summary.to_string(index=False) if not summary.empty else "No MNLI statistics were produced")
 
 
 def cmd_interface_statistics(args: argparse.Namespace) -> None:
@@ -390,6 +397,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     command = sub.add_parser("run-mnli-control")
     config_flags(command, models=True)
+    command.add_argument("--phase", choices=["run", "aggregate", "all"], default="all")
     command.set_defaults(func=cmd_mnli)
 
     command = sub.add_parser("summarize-mnli")

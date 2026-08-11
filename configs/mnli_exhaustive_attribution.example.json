@@ -1,0 +1,144 @@
+{
+  "input_path": "datasets/multinli_1.0_train.jsonl",
+  "output_dir": "outputs/mnli_exhaustive_attribution",
+  "reference_interface": "letter_entailment_neutral_contradiction",
+  "primary_score": "mean_logprob",
+  "attribution_analysis": true,
+  "include_inverse_control": false,
+  "random_seeds": [13, 29, 47, 71, 101],
+  "max_train_pairs_per_contrast": 2048,
+  "max_test_pairs_per_contrast": 512,
+  "contrasts": [
+    {
+      "name": "contradiction_to_entailment",
+      "source_label": "contradiction",
+      "target_label": "entailment"
+    },
+    {
+      "name": "contradiction_to_neutral",
+      "source_label": "contradiction",
+      "target_label": "neutral"
+    },
+    {
+      "name": "neutral_to_entailment",
+      "source_label": "neutral",
+      "target_label": "entailment"
+    }
+  ],
+  "templates": [
+    {
+      "name": "relationship",
+      "question": "Question: What is the logical relationship between the premise and hypothesis?",
+      "answer_instruction": "Return exactly one answer."
+    },
+    {
+      "name": "nli_classify",
+      "question": "Question: Classify whether the premise entails, contradicts, or is neutral toward the hypothesis.",
+      "answer_instruction": "Provide one classification only."
+    },
+    {
+      "name": "best_label",
+      "question": "Question: Choose the inference label that best describes this pair.",
+      "answer_instruction": "Give exactly one label."
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "letter_entailment_neutral_contradiction",
+      "kind": "letter_mcq",
+      "option_order": ["entailment", "neutral", "contradiction"],
+      "label_values": {
+        "entailment": "entailment - the hypothesis follows from the premise",
+        "neutral": "neutral - neither entailment nor contradiction",
+        "contradiction": "contradiction - the hypothesis conflicts with the premise"
+      }
+    },
+    {
+      "name": "letter_entailment_contradiction_neutral",
+      "kind": "letter_mcq",
+      "option_order": ["entailment", "contradiction", "neutral"],
+      "label_values": {
+        "entailment": "entailment - the hypothesis follows from the premise",
+        "neutral": "neutral - neither entailment nor contradiction",
+        "contradiction": "contradiction - the hypothesis conflicts with the premise"
+      }
+    },
+    {
+      "name": "letter_neutral_entailment_contradiction",
+      "kind": "letter_mcq",
+      "option_order": ["neutral", "entailment", "contradiction"],
+      "label_values": {
+        "entailment": "entailment - the hypothesis follows from the premise",
+        "neutral": "neutral - neither entailment nor contradiction",
+        "contradiction": "contradiction - the hypothesis conflicts with the premise"
+      }
+    },
+    {
+      "name": "letter_neutral_contradiction_entailment",
+      "kind": "letter_mcq",
+      "option_order": ["neutral", "contradiction", "entailment"],
+      "label_values": {
+        "entailment": "entailment - the hypothesis follows from the premise",
+        "neutral": "neutral - neither entailment nor contradiction",
+        "contradiction": "contradiction - the hypothesis conflicts with the premise"
+      }
+    },
+    {
+      "name": "letter_contradiction_entailment_neutral",
+      "kind": "letter_mcq",
+      "option_order": ["contradiction", "entailment", "neutral"],
+      "label_values": {
+        "entailment": "entailment - the hypothesis follows from the premise",
+        "neutral": "neutral - neither entailment nor contradiction",
+        "contradiction": "contradiction - the hypothesis conflicts with the premise"
+      }
+    },
+    {
+      "name": "letter_contradiction_neutral_entailment",
+      "kind": "letter_mcq",
+      "option_order": ["contradiction", "neutral", "entailment"],
+      "label_values": {
+        "entailment": "entailment - the hypothesis follows from the premise",
+        "neutral": "neutral - neither entailment nor contradiction",
+        "contradiction": "contradiction - the hypothesis conflicts with the premise"
+      }
+    }
+  ],
+  "models": [
+    {
+      "alias": "qwen2_5_7b_instruct",
+      "name": "Qwen/Qwen2.5-7B-Instruct",
+      "locked_layer": 20,
+      "locked_alpha": 0.8
+    },
+    {
+      "alias": "llama3_1_8b_instruct",
+      "name": "meta-llama/Llama-3.1-8B-Instruct",
+      "locked_layer": 23,
+      "locked_alpha": 0.8
+    },
+    {
+      "alias": "mistral7b_instruct_v03",
+      "name": "mistralai/Mistral-7B-Instruct-v0.3",
+      "locked_layer": 23,
+      "locked_alpha": 0.8
+    },
+    {
+      "alias": "gemma2_9b_it",
+      "name": "google/gemma-2-9b-it",
+      "locked_layer": 31,
+      "locked_alpha": 0.8
+    }
+  ],
+  "runtime": {
+    "batch_size": 2,
+    "max_length": 512,
+    "seed": 13,
+    "force_rerun": false
+  },
+  "statistics": {
+    "n_boot": 10000,
+    "confidence": 0.95,
+    "bootstrap_chunk_size": 250
+  }
+}

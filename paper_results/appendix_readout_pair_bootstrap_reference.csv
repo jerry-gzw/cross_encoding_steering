@@ -1,0 +1,6 @@
+comparison,statistic,estimate,ci_low,ci_high,n_pair_units,n_model_contrast_strata,confidence,n_boot,inference_unit
+projection_minus_residual,paired_difference,0.2049436803596184,0.2009989750355762,0.2089101635509729,1536,12,0.95,5000,pair_id; bootstrap independently within model-by-contrast strata; equal stratum weight
+raw_minus_residual,paired_difference,0.2129676844307368,0.2090334806293711,0.2169122472187239,1536,12,0.95,5000,pair_id; bootstrap independently within model-by-contrast strata; equal stratum weight
+projection_minus_subspace_random,paired_difference,0.1975803918503768,0.1930642192500159,0.2019991950112716,768,12,0.95,5000,pair_id; bootstrap independently within model-by-contrast strata; equal stratum weight
+projection_retention_ratio,ratio_of_balanced_means,0.9626889685262704,0.9589775969481404,0.966180660815669,1536,12,0.95,5000,pair_id; bootstrap independently within model-by-contrast strata; equal stratum weight
+residual_retention_ratio,ratio_of_balanced_means,0.0097158592823366,0.0061657393610884,0.0131734498424578,1536,12,0.95,5000,pair_id; bootstrap independently within model-by-contrast strata; equal stratum weight

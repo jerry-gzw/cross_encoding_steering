@@ -1,0 +1,6 @@
+interface,current_label_effect,extraction_id_effect,id_advantage,id_advantage_ci_low,id_advantage_ci_high,id_advantage_ci_excludes_zero,profile,mapping
+letter_entailment_contradiction_neutral,2.527707482693303,3.061910742236716,0.5342032595434122,0.5066145616287184,0.5616405110010385,True,extraction_id_dominant,E/C/N
+letter_neutral_entailment_contradiction,2.366739426858516,2.997730754579728,0.6309913277212115,0.6127317484156924,0.6494639488512387,True,extraction_id_dominant,N/E/C
+letter_neutral_contradiction_entailment,0.5962071020104406,1.267359607019979,0.6711525050095384,0.6433815240782894,0.6984488827132238,True,extraction_id_dominant,N/C/E
+letter_contradiction_entailment_neutral,-0.4683377150446177,2.0799769970743607,2.5483147121189784,2.517254010822437,2.580204917677382,True,extraction_id_dominant,C/E/N
+letter_contradiction_neutral_entailment,-0.0547481362449211,1.870923538557771,1.9256716748026923,1.9011462346317465,1.9498691489619155,True,extraction_id_dominant,C/N/E
