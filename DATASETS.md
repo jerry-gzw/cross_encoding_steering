@@ -54,8 +54,8 @@ evaluation, not a general NLI benchmark claim.
 
 The supplement uses MIC only as a binary extraction-position sensitivity
 check. Pairs keep the dialogue and moral axis fixed while changing the rule of
-thumb. Because binary label swapping algebraically couples current-label and
-extraction-ID effects, MIC is not used for the main attribution claim.
+thumb. Because binary label swapping algebraically couples semantic-label and
+extraction-index effects, MIC is not used for the main attribution claim.
 
 ## Public CAA repository
 

@@ -25,6 +25,7 @@ judges = [
   "openai>=1.0",
 ]
 dev = ["pytest>=7.0"]
+figures = ["matplotlib>=3.7"]
 
 [project.scripts]
 cross-encoding-steering = "cross_encoding_steering.cli:main"

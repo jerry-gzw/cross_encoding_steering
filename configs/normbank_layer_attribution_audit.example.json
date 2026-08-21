@@ -6,17 +6,10 @@
   },
   "layer_attribution": {
     "layer_fractions": [0.5, 0.625, 0.75, 0.875],
-    "rank_candidates": [2, 4, 8, 16],
-    "validation_explained_energy_threshold": 0.9,
-    "max_train_prompts_per_contrast": 64,
-    "max_validation_prompts_per_contrast": 32,
-    "gradient_batch_size": 1,
-    "normalize_gradients": true,
+    "norm_match_reference_fraction": 0.75,
     "enabled_modes": [
       "raw_canonical_direction",
-      "mean_local_gradient_norm_matched",
-      "readout_projection_norm_matched",
-      "readout_orthogonal_norm_matched"
+      "raw_canonical_direction_depth_norm_matched"
     ]
   },
   "statistics": {

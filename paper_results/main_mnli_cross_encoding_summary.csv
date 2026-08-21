@@ -1,2 +1,2 @@
 dataset,pair_regime,n_models,n_alternative_mappings,current_label_positive_mappings,extraction_id_positive_mappings,id_advantage_positive_mappings,mean_current_label_effect,mean_extraction_id_effect,mean_id_advantage,models_extraction_id_dominant,models_current_label_dominant,baseline_cells_above_chance,n_baseline_cells,interpretation
-MNLI,Same-premise pairs,4,5,3,5,5,0.9935136320545442,2.255580327893711,1.2620666958391664,3,1,24,24,Pooled extraction-ID dominance with model-dependent attribution
+MNLI,Same-premise pairs,4,5,3,5,5,0.9935136320545442,2.255580327893711,1.2620666958391664,3,1,24,24,Pooled extraction-index dominance with model-dependent attribution

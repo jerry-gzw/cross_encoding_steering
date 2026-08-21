@@ -4,9 +4,11 @@ Code and compact result tables for **What Does Activation Steering Control? Attr
 
 The core audit extracts one steering direction, freezes it, and changes the
 answer encoding while keeping the item, model, direction, layer, position, and
-intervention dose fixed. It then tests whether score changes follow the current
-semantic label, the option identifier used during extraction, or that
-identifier's displayed row. The repository also contains the paper's depth and
+intervention dose fixed. It tests whether score changes follow the semantic
+label under the test encoding, the identifier index defined during extraction,
+or the extraction-time displayed row. We call the second quantity the
+*extraction index*: index 1 is instantiated by A, X, or 1; index 2 by B, Y, or
+2; and index 3 by C, Z, or 3. The repository also contains the paper's depth and
 position localization, output-sensitive-subspace, matched-context, cross-task,
 cross-method, and open-generation checks.
 
@@ -14,15 +16,14 @@ cross-method, and open-generation checks.
 
 - strict group- and endpoint-disjoint NormBank splits;
 - all six A/B/C semantic mappings;
-- the 108-condition semantics x identifier-vocabulary x row-order factorial;
+- the 108-condition semantic-mapping by identifier-vocabulary by row-order factorial;
 - CAA and ITI-style interventions;
 - layer and extraction-position localization;
 - direct output-sensitive baselines and local Jacobian projection/residual interventions;
 - cross-vocabulary readout transfer;
 - in-family mapping-balanced factorial evaluation;
 - SC101, MultiNLI, matched-context, random-direction, and competence controls;
-- the published CAA MCQ/open-generation case study, multi-judge scoring, and
-  the 180-response human validation.
+- the published CAA MCQ/open-generation case study, multi-judge scoring, and the 180-response human validation.
 
 Exploratory datasets and legacy stage pipelines are outside the scope of this
 artifact.
@@ -180,7 +181,8 @@ The blinded scoring rubric and adjudication protocol are documented in
 ## Models and locked layers
 
 The main NormBank intervention uses `alpha=0.8` at approximately 75% model
-depth. The layer audit additionally evaluates 50%, 62.5%, 75%, and 87.5%.
+depth. The layer audit additionally evaluates 50%, 62.5%, 75%, and 87.5%, with
+each model--contrast direction rescaled to its norm at 75% depth.
 
 | Alias | Model | Main zero-based block |
 |---|---|---:|
@@ -197,6 +199,14 @@ ITI heads and strength are selected on validation data.
 `paper_results/` contains compact CSV copies of the reported summaries and the
 paper figures. Its README maps claims to files. Full pair-level outputs are
 regenerated under `outputs/` and are not committed.
+
+The four quantitative figures used by the current paper and supplement can be
+regenerated directly from these compact CSVs:
+
+```bash
+pip install -e ".[figures]"
+bash scripts/render_paper_figures.sh
+```
 
 ## Validation
 

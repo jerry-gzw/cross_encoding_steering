@@ -47,6 +47,13 @@ from .steering import (
 
 LAYER_ATTRIBUTION_MODES = (
     "raw_canonical_direction",
+    "raw_canonical_direction_depth_norm_matched",
+    "mean_local_gradient_norm_matched",
+    "readout_projection_norm_matched",
+    "readout_orthogonal_norm_matched",
+)
+
+READOUT_LAYER_ATTRIBUTION_MODES = (
     "mean_local_gradient_norm_matched",
     "readout_projection_norm_matched",
     "readout_orthogonal_norm_matched",
@@ -56,6 +63,7 @@ LAYER_ATTRIBUTION_MODES = (
 @dataclass(frozen=True)
 class LayerAttributionSettings:
     layer_fractions: tuple[float, ...] = (0.5, 0.625, 0.75, 0.875)
+    norm_match_reference_fraction: float = 0.75
     rank_candidates: tuple[int, ...] = (2, 4, 8, 16)
     validation_explained_energy_threshold: float = 0.9
     max_train_prompts_per_contrast: int = 64
@@ -106,6 +114,17 @@ class LayerAttributionAuditConfig:
             raise ValueError(
                 "layer_attribution.layer_fractions must contain values in [0, 1]"
             )
+        norm_match_reference_fraction = float(
+            raw.pop("norm_match_reference_fraction", 0.75)
+        )
+        if not any(
+            np.isclose(norm_match_reference_fraction, value)
+            for value in layer_fractions
+        ):
+            raise ValueError(
+                "layer_attribution.norm_match_reference_fraction must be "
+                "one of layer_attribution.layer_fractions"
+            )
         if not rank_candidates or min(rank_candidates) <= 0:
             raise ValueError(
                 "layer_attribution.rank_candidates must contain positive integers"
@@ -119,6 +138,7 @@ class LayerAttributionAuditConfig:
             )
         settings = LayerAttributionSettings(
             layer_fractions=layer_fractions,
+            norm_match_reference_fraction=norm_match_reference_fraction,
             rank_candidates=rank_candidates,
             enabled_modes=enabled_modes,
             **raw,
@@ -167,9 +187,9 @@ def _mean_oriented_gradient(
 def build_layer_direction_bank(
     *,
     raw_directions: dict[str, np.ndarray],
-    readout_basis: np.ndarray,
-    train_gradients: np.ndarray,
-    train_gradient_inventory: pd.DataFrame,
+    readout_basis: np.ndarray | None,
+    train_gradients: np.ndarray | None,
+    train_gradient_inventory: pd.DataFrame | None,
     canonical_labels: tuple[str, ...],
     normalize_gradient_rows: bool,
     enabled_modes: tuple[str, ...],
@@ -177,6 +197,9 @@ def build_layer_direction_bank(
     layer_index: int,
     requested_layer_fraction: float,
     resolved_layer_fraction: float,
+    depth_norm_reference_norms: dict[str, float] | None = None,
+    depth_norm_reference_layer_index: int | None = None,
+    depth_norm_reference_fraction: float | None = None,
 ) -> tuple[
     dict[tuple[str, str], np.ndarray],
     pd.DataFrame,
@@ -188,9 +211,28 @@ def build_layer_direction_bank(
     identifier_by_label = dict(zip(canonical_labels, identifiers))
     directions: dict[tuple[str, str], np.ndarray] = {}
     rows = []
-    saved_arrays: dict[str, np.ndarray] = {
-        "readout_basis": np.asarray(readout_basis, dtype=np.float32)
-    }
+    saved_arrays: dict[str, np.ndarray] = {}
+    if readout_basis is not None:
+        saved_arrays["readout_basis"] = np.asarray(
+            readout_basis, dtype=np.float32
+        )
+    readout_modes = set(enabled_modes) & set(READOUT_LAYER_ATTRIBUTION_MODES)
+    if readout_modes and readout_basis is None:
+        raise ValueError("Readout modes require a readout basis")
+    if (
+        "mean_local_gradient_norm_matched" in enabled_modes
+        and (train_gradients is None or train_gradient_inventory is None)
+    ):
+        raise ValueError(
+            "mean_local_gradient_norm_matched requires training gradients"
+        )
+    if (
+        "raw_canonical_direction_depth_norm_matched" in enabled_modes
+        and depth_norm_reference_norms is None
+    ):
+        raise ValueError(
+            "Depth norm matching requires reference direction norms"
+        )
     for pair_type, raw in sorted(raw_directions.items()):
         labels = str(pair_type).split("_vs_", maxsplit=1)
         if len(labels) != 2 or any(
@@ -200,32 +242,52 @@ def build_layer_direction_bank(
         source_label, target_label = labels
         source_identifier = identifier_by_label[source_label]
         target_identifier = identifier_by_label[target_label]
-        mean_gradient, n_gradient_vectors = _mean_oriented_gradient(
-            train_gradients,
-            train_gradient_inventory,
-            source_identifier=source_identifier,
-            target_identifier=target_identifier,
-            normalize_rows=normalize_gradient_rows,
-        )
-        decomposition = decompose_against_subspace(raw, readout_basis)
-        raw_norm = float(decomposition["raw_l2"])
-        candidates = {
-            "raw_canonical_direction": np.asarray(
-                decomposition["raw"], dtype=np.float32
-            ),
-            "mean_local_gradient_norm_matched": _rescale(
+        raw = np.asarray(raw, dtype=np.float32)
+        raw_norm = float(np.linalg.norm(raw))
+        if raw_norm <= 1e-12:
+            raise ValueError(f"Cannot evaluate zero CAA direction for {pair_type}")
+        candidates = {"raw_canonical_direction": raw}
+        if "raw_canonical_direction_depth_norm_matched" in enabled_modes:
+            reference_norm = float(depth_norm_reference_norms[pair_type])
+            candidates[
+                "raw_canonical_direction_depth_norm_matched"
+            ] = _rescale(
+                raw,
+                reference_norm,
+                label=f"{pair_type} depth-matched CAA direction",
+            )
+
+        decomposition: dict[str, np.ndarray | float] | None = None
+        if readout_modes:
+            decomposition = decompose_against_subspace(raw, readout_basis)
+        n_gradient_vectors = 0
+        if "mean_local_gradient_norm_matched" in enabled_modes:
+            mean_gradient, n_gradient_vectors = _mean_oriented_gradient(
+                train_gradients,
+                train_gradient_inventory,
+                source_identifier=source_identifier,
+                target_identifier=target_identifier,
+                normalize_rows=normalize_gradient_rows,
+            )
+            candidates["mean_local_gradient_norm_matched"] = _rescale(
                 mean_gradient, raw_norm, label="mean local gradient"
-            ),
-            "readout_projection_norm_matched": np.asarray(
+            )
+        if "readout_projection_norm_matched" in enabled_modes:
+            candidates["readout_projection_norm_matched"] = np.asarray(
                 decomposition["projection_norm_matched"], dtype=np.float32
-            ),
-            "readout_orthogonal_norm_matched": np.asarray(
+            )
+        if "readout_orthogonal_norm_matched" in enabled_modes:
+            candidates["readout_orthogonal_norm_matched"] = np.asarray(
                 decomposition["residual_norm_matched"], dtype=np.float32
-            ),
-        }
+            )
         for mode, vector in candidates.items():
             if mode not in enabled_modes:
                 continue
+            target_norm = (
+                float(depth_norm_reference_norms[pair_type])
+                if mode == "raw_canonical_direction_depth_norm_matched"
+                else raw_norm
+            )
             directions[(pair_type, mode)] = vector
             saved_arrays[f"{pair_type}__{mode}"] = vector
             rows.append(
@@ -246,20 +308,44 @@ def build_layer_direction_bank(
                     ),
                     "direction_l2": float(np.linalg.norm(vector)),
                     "raw_caa_l2": raw_norm,
-                    "readout_projection_l2": float(
-                        decomposition["projection_l2"]
+                    "readout_projection_l2": (
+                        float(decomposition["projection_l2"])
+                        if decomposition is not None
+                        else np.nan
                     ),
-                    "readout_orthogonal_l2": float(
-                        decomposition["residual_l2"]
+                    "readout_orthogonal_l2": (
+                        float(decomposition["residual_l2"])
+                        if decomposition is not None
+                        else np.nan
                     ),
-                    "readout_projection_energy_fraction": float(
-                        decomposition["projection_energy_fraction"]
+                    "readout_projection_energy_fraction": (
+                        float(decomposition["projection_energy_fraction"])
+                        if decomposition is not None
+                        else np.nan
                     ),
-                    "readout_orthogonal_energy_fraction": float(
-                        decomposition["residual_energy_fraction"]
+                    "readout_orthogonal_energy_fraction": (
+                        float(decomposition["residual_energy_fraction"])
+                        if decomposition is not None
+                        else np.nan
                     ),
                     "n_gradient_vectors": n_gradient_vectors,
-                    "readout_subspace_rank": int(readout_basis.shape[1]),
+                    "readout_subspace_rank": (
+                        int(readout_basis.shape[1])
+                        if readout_basis is not None
+                        else 0
+                    ),
+                    "depth_norm_matched": (
+                        mode
+                        == "raw_canonical_direction_depth_norm_matched"
+                    ),
+                    "depth_norm_reference_layer_index": (
+                        depth_norm_reference_layer_index
+                    ),
+                    "depth_norm_reference_fraction": (
+                        depth_norm_reference_fraction
+                    ),
+                    "depth_norm_target_l2": target_norm,
+                    "depth_norm_scale": target_norm / raw_norm,
                 }
             )
     if not directions:
@@ -401,6 +487,31 @@ def run_single_model_layer_attribution(
         progress(f"[{alias}] all requested layers already complete")
         return _collect_layer_tables(model_dir)
 
+    depth_norm_mode = (
+        "raw_canonical_direction_depth_norm_matched"
+        in config.settings.enabled_modes
+    )
+    readout_modes_enabled = bool(
+        set(config.settings.enabled_modes)
+        & set(READOUT_LAYER_ATTRIBUTION_MODES)
+    )
+    reference_rows = layer_map.loc[
+        np.isclose(
+            layer_map["requested_layer_fraction"].astype(float),
+            config.settings.norm_match_reference_fraction,
+        )
+    ]
+    if depth_norm_mode and len(reference_rows) != 1:
+        raise ValueError(
+            "Could not resolve exactly one norm-match reference layer for "
+            f"fraction {config.settings.norm_match_reference_fraction}"
+        )
+    reference_layer_index = (
+        int(reference_rows.iloc[0]["resolved_layer_index"])
+        if depth_norm_mode
+        else None
+    )
+
     base_items = load_base_items(audit.dataset, seed=audit.runtime.seed)
     canonical_mapping = next(
         mapping
@@ -416,25 +527,26 @@ def run_single_model_layer_attribution(
     pending_layers = [
         int(row["resolved_layer_index"]) for row in pending_rows
     ]
+    activation_layers = resolved_layers if depth_norm_mode else pending_layers
     identifiers = tuple(
         chr(ord("A") + index)
         for index in range(len(audit.dataset.label_ranks))
     )
     progress(
         f"[{alias}] collecting CAA train activations for layers "
-        f"{pending_layers}"
+        f"{activation_layers}"
     )
     _, activations = collect_choice_probs_and_activations(
         model,
         tokenizer,
         train_items["prompt"].tolist(),
-        layer_indices=pending_layers,
+        layer_indices=activation_layers,
         batch_size=audit.runtime.batch_size,
         max_length=audit.runtime.max_length,
         choice_letters=list(identifiers),
     )
     raw_by_layer = {}
-    for layer_index in pending_layers:
+    for layer_index in activation_layers:
         raw_by_layer[layer_index], _ = contrast_directions(
             train_pairs,
             activations[layer_index],
@@ -442,44 +554,68 @@ def run_single_model_layer_attribution(
         )
     del activations
 
-    train_gradient_items = sample_gradient_prompts(
-        canonical_items,
-        split_column=audit.dataset.split_column,
-        train_split=audit.dataset.train_split,
-        contrast_column=audit.dataset.contrast_column,
-        max_per_contrast=config.settings.max_train_prompts_per_contrast,
-        seed=audit.runtime.seed,
-    )
-    validation_gradient_items = sample_gradient_prompts(
-        canonical_items,
-        split_column=audit.dataset.split_column,
-        train_split=audit.dataset.validation_split,
-        contrast_column=audit.dataset.contrast_column,
-        max_per_contrast=(
-            config.settings.max_validation_prompts_per_contrast
-        ),
-        seed=audit.runtime.seed + 1,
-    )
+    depth_norm_reference_norms = None
+    if depth_norm_mode:
+        depth_norm_reference_norms = {
+            pair_type: float(np.linalg.norm(vector))
+            for pair_type, vector in raw_by_layer[
+                reference_layer_index
+            ].items()
+        }
+        if any(value <= 1e-12 for value in depth_norm_reference_norms.values()):
+            raise ValueError("Norm-match reference layer contains a zero direction")
+
+    train_gradient_items = validation_gradient_items = None
+    if readout_modes_enabled:
+        train_gradient_items = sample_gradient_prompts(
+            canonical_items,
+            split_column=audit.dataset.split_column,
+            train_split=audit.dataset.train_split,
+            contrast_column=audit.dataset.contrast_column,
+            max_per_contrast=config.settings.max_train_prompts_per_contrast,
+            seed=audit.runtime.seed,
+        )
+        validation_gradient_items = sample_gradient_prompts(
+            canonical_items,
+            split_column=audit.dataset.split_column,
+            train_split=audit.dataset.validation_split,
+            contrast_column=audit.dataset.contrast_column,
+            max_per_contrast=(
+                config.settings.max_validation_prompts_per_contrast
+            ),
+            seed=audit.runtime.seed + 1,
+        )
 
     for layer_row in pending_rows:
         layer_index = int(layer_row["resolved_layer_index"])
         layer_dir = _layer_dir(model_dir, layer_index)
         layer_dir.mkdir(parents=True, exist_ok=True)
-        progress(f"[{alias}] layer {layer_index}: collecting gradients")
-        try:
-            train_gradients, train_inventory = (
-                collect_local_identifier_gradients(
-                    model,
-                    tokenizer,
-                    train_gradient_items["prompt"].tolist(),
-                    layer_index=layer_index,
-                    identifiers=identifiers,
-                    batch_size=config.settings.gradient_batch_size,
-                    max_length=audit.runtime.max_length,
-                )
+        progress(
+            f"[{alias}] layer {layer_index}: "
+            + (
+                "collecting gradients"
+                if readout_modes_enabled
+                else "building depth-norm controls"
             )
-            validation_gradients, validation_inventory = (
-                collect_local_identifier_gradients(
+        )
+        try:
+            train_gradients = validation_gradients = None
+            train_inventory = None
+            basis = None
+            rank_selection = pd.DataFrame()
+            if readout_modes_enabled:
+                train_gradients, train_inventory = (
+                    collect_local_identifier_gradients(
+                        model,
+                        tokenizer,
+                        train_gradient_items["prompt"].tolist(),
+                        layer_index=layer_index,
+                        identifiers=identifiers,
+                        batch_size=config.settings.gradient_batch_size,
+                        max_length=audit.runtime.max_length,
+                    )
+                )
+                validation_gradients, _ = collect_local_identifier_gradients(
                     model,
                     tokenizer,
                     validation_gradient_items["prompt"].tolist(),
@@ -488,16 +624,15 @@ def run_single_model_layer_attribution(
                     batch_size=config.settings.gradient_batch_size,
                     max_length=audit.runtime.max_length,
                 )
-            )
-            basis, _, rank_selection = select_readout_rank(
-                train_gradients,
-                validation_gradients,
-                rank_candidates=config.settings.rank_candidates,
-                explained_energy_threshold=(
-                    config.settings.validation_explained_energy_threshold
-                ),
-                normalize_gradients=config.settings.normalize_gradients,
-            )
+                basis, _, rank_selection = select_readout_rank(
+                    train_gradients,
+                    validation_gradients,
+                    rank_candidates=config.settings.rank_candidates,
+                    explained_energy_threshold=(
+                        config.settings.validation_explained_energy_threshold
+                    ),
+                    normalize_gradients=config.settings.normalize_gradients,
+                )
             directions, direction_inventory, arrays = (
                 build_layer_direction_bank(
                     raw_directions=raw_by_layer[layer_index],
@@ -517,17 +652,29 @@ def run_single_model_layer_attribution(
                     resolved_layer_fraction=float(
                         layer_row["resolved_layer_fraction"]
                     ),
+                    depth_norm_reference_norms=(
+                        depth_norm_reference_norms
+                    ),
+                    depth_norm_reference_layer_index=(
+                        reference_layer_index
+                    ),
+                    depth_norm_reference_fraction=(
+                        config.settings.norm_match_reference_fraction
+                        if depth_norm_mode
+                        else None
+                    ),
                 )
             )
-            rank_selection["layer_index"] = layer_index
-            rank_selection["requested_layer_fraction"] = float(
-                layer_row["requested_layer_fraction"]
-            )
-            rank_selection["resolved_layer_fraction"] = float(
-                layer_row["resolved_layer_fraction"]
-            )
-            arrays["train_local_gradients"] = train_gradients
-            arrays["validation_local_gradients"] = validation_gradients
+            if not rank_selection.empty:
+                rank_selection["layer_index"] = layer_index
+                rank_selection["requested_layer_fraction"] = float(
+                    layer_row["requested_layer_fraction"]
+                )
+                rank_selection["resolved_layer_fraction"] = float(
+                    layer_row["resolved_layer_fraction"]
+                )
+                arrays["train_local_gradients"] = train_gradients
+                arrays["validation_local_gradients"] = validation_gradients
 
             all_eval_rows = []
             all_pair_effects = []
@@ -707,6 +854,40 @@ def aggregate_layer_attribution(
     config: LayerAttributionAuditConfig,
 ) -> dict[str, pd.DataFrame]:
     aggregated = _collect_model_tables(config)
+    inventory = aggregated.get(
+        "layer_attribution_direction_inventory", pd.DataFrame()
+    )
+    depth_mode = "raw_canonical_direction_depth_norm_matched"
+    if not inventory.empty and inventory["mode"].eq(depth_mode).any():
+        norm_check = inventory.loc[
+            inventory["mode"].eq(depth_mode),
+            [
+                "model_alias",
+                "pair_type",
+                "layer_index",
+                "requested_layer_fraction",
+                "resolved_layer_fraction",
+                "raw_caa_l2",
+                "direction_l2",
+                "depth_norm_reference_layer_index",
+                "depth_norm_reference_fraction",
+                "depth_norm_target_l2",
+                "depth_norm_scale",
+            ],
+        ].copy()
+        norm_check["norm_match_absolute_error"] = (
+            norm_check["direction_l2"]
+            - norm_check["depth_norm_target_l2"]
+        ).abs()
+        aggregated["layer_attribution_depth_norm_match_check"] = (
+            norm_check.sort_values(
+                [
+                    "model_alias",
+                    "pair_type",
+                    "requested_layer_fraction",
+                ]
+            ).reset_index(drop=True)
+        )
     effects = aggregated.get(
         "layer_attribution_pair_effects", pd.DataFrame()
     )

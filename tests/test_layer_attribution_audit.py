@@ -51,8 +51,13 @@ def test_layer_direction_bank_builds_norm_matched_controls() -> None:
         layer_index=7,
         requested_layer_fraction=0.75,
         resolved_layer_fraction=0.7,
+        depth_norm_reference_norms={
+            "taboo_vs_expected": float(np.linalg.norm(raw))
+        },
+        depth_norm_reference_layer_index=7,
+        depth_norm_reference_fraction=0.75,
     )
-    assert len(directions) == 4
+    assert len(directions) == 5
     raw_norm = np.linalg.norm(raw)
     for vector in directions.values():
         assert np.isclose(np.linalg.norm(vector), raw_norm)
@@ -60,6 +65,41 @@ def test_layer_direction_bank_builds_norm_matched_controls() -> None:
         LAYER_ATTRIBUTION_MODES
     )
     assert "readout_basis" in arrays
+
+
+def test_depth_norm_matched_direction_uses_reference_layer_norm() -> None:
+    raw = np.asarray([3.0, 4.0, 0.0], dtype=np.float32)
+    target_norm = 2.5
+    directions, inventory, arrays = build_layer_direction_bank(
+        raw_directions={"taboo_vs_expected": raw},
+        readout_basis=None,
+        train_gradients=None,
+        train_gradient_inventory=None,
+        canonical_labels=("taboo", "normal", "expected"),
+        normalize_gradient_rows=True,
+        enabled_modes=(
+            "raw_canonical_direction",
+            "raw_canonical_direction_depth_norm_matched",
+        ),
+        extraction_mapping="canonical",
+        layer_index=5,
+        requested_layer_fraction=0.5,
+        resolved_layer_fraction=0.5,
+        depth_norm_reference_norms={"taboo_vs_expected": target_norm},
+        depth_norm_reference_layer_index=7,
+        depth_norm_reference_fraction=0.75,
+    )
+    matched = directions[
+        (
+            "taboo_vs_expected",
+            "raw_canonical_direction_depth_norm_matched",
+        )
+    ]
+    assert np.isclose(np.linalg.norm(matched), target_norm)
+    matched_row = inventory.loc[inventory["depth_norm_matched"]].iloc[0]
+    assert np.isclose(matched_row["depth_norm_scale"], 0.5)
+    assert matched_row["depth_norm_reference_layer_index"] == 7
+    assert "readout_basis" not in arrays
 
 
 def test_layer_group_cluster_statistics_preserve_paired_depths() -> None:
@@ -104,8 +144,11 @@ def test_layer_group_cluster_statistics_preserve_paired_depths() -> None:
                             ),
                         }
                     )
+    effects = pd.DataFrame(rows)
+    matched = effects.copy()
+    matched["mode"] = "raw_canonical_direction_depth_norm_matched"
     profile, contrasts = build_layer_group_cluster_statistics(
-        pd.DataFrame(rows),
+        pd.concat([effects, matched], ignore_index=True),
         pairs,
         canonical_mapping="canonical",
         n_boot=100,
@@ -114,14 +157,20 @@ def test_layer_group_cluster_statistics_preserve_paired_depths() -> None:
     )
 
     late_advantage = profile.loc[
-        profile["requested_layer_fraction"].eq(0.875)
+        profile["mode"].eq("raw_canonical_direction")
+        & profile["requested_layer_fraction"].eq(0.875)
         & profile["metric"].eq("extraction_identifier_advantage")
     ].iloc[0]
     assert np.isclose(late_advantage["mean"], 0.6)
     assert late_advantage["n_groups"] == 4
     late_vs_early = contrasts.loc[
-        contrasts["metric"].eq("extraction_identifier_effect")
+        contrasts["mode"].eq("raw_canonical_direction")
+        & contrasts["metric"].eq("extraction_identifier_effect")
         & contrasts["late_depth"].eq(0.875)
         & contrasts["early_depth"].eq(0.5)
     ].iloc[0]
     assert np.isclose(late_vs_early["late_minus_early"], 0.6)
+    assert set(contrasts["mode"]) == {
+        "raw_canonical_direction",
+        "raw_canonical_direction_depth_norm_matched",
+    }
