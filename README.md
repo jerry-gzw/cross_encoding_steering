@@ -208,17 +208,15 @@ pip install -e ".[figures]"
 bash scripts/render_paper_figures.sh
 ```
 
+PDF figure export also requires Ghostscript (`gs`). The renderer converts
+figure text to vector outlines so the exported PDFs do not embed Type 3 or CID
+fonts.
+
 ## Validation
 
 ```bash
 pytest -q
 python -m cross_encoding_steering.cli --help
-```
-
-## Citation
-
-```bibtex
-# TODO
 ```
 
 ## License

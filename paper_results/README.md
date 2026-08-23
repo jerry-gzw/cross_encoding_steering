@@ -45,7 +45,6 @@ outputs are regenerated under `outputs/`.
 - `appendix_layer_attribution_depth_contrasts.csv`
 - `appendix_layer_attribution_depth_norm_match_check.csv`
 - `appendix_layer_attribution_group_cluster_ci.csv`
-- `appendix_layer_attribution_readout_geometry.csv`
 - `appendix_readout_component_paired_statistics.csv`
 - `appendix_readout_first_order_fidelity.csv`
 - `appendix_readout_group_cluster_bootstrap_ci.csv`

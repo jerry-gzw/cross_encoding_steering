@@ -5,8 +5,8 @@ source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/common.sh"
 
 PHASE="${NDD_MNLI_ATTRIBUTION_PHASE:-all}"
 CONFIG="${NDD_MNLI_ATTRIBUTION_CONFIG:-${REPO_ROOT}/configs/mnli_exhaustive_attribution.example.json}"
-GPU_0="${NDD_MNLI_ATTRIBUTION_GPU_0:-0}"
-GPU_1="${NDD_MNLI_ATTRIBUTION_GPU_1:-1}"
+GPU_0="${NDD_MNLI_ATTRIBUTION_GPU_0:-}"
+GPU_1="${NDD_MNLI_ATTRIBUTION_GPU_1:-}"
 GPU_0_MODELS="${NDD_MNLI_ATTRIBUTION_GPU_0_MODELS:-qwen2_5_7b_instruct,gemma2_9b_it}"
 GPU_1_MODELS="${NDD_MNLI_ATTRIBUTION_GPU_1_MODELS:-llama3_1_8b_instruct,mistral7b_instruct_v03}"
 
@@ -70,6 +70,10 @@ case "${PHASE}" in
     ;;
   parallel)
     preflight
+    if [[ -z "${GPU_0}" || -z "${GPU_1}" ]]; then
+      echo "parallel phase requires NDD_MNLI_ATTRIBUTION_GPU_0 and NDD_MNLI_ATTRIBUTION_GPU_1" >&2
+      exit 2
+    fi
     log_step "Run MNLI attribution workers on GPUs ${GPU_0} and ${GPU_1}"
     (export CUDA_VISIBLE_DEVICES="${GPU_0}"; run_cli run "${GPU_0_MODELS}") &
     pid_0=$!
@@ -93,7 +97,9 @@ case "${PHASE}" in
       --project-root "${NDD_PROJECT_ROOT}"
     ;;
   all)
-    NDD_MNLI_ATTRIBUTION_PHASE=parallel bash "${BASH_SOURCE[0]}"
+    preflight
+    log_step "Run exhaustive MNLI attribution on current CUDA_VISIBLE_DEVICES"
+    run_cli run "${NDD_MNLI_ATTRIBUTION_MODELS:-}"
     NDD_MNLI_ATTRIBUTION_PHASE=aggregate bash "${BASH_SOURCE[0]}"
     NDD_MNLI_ATTRIBUTION_PHASE=statistics bash "${BASH_SOURCE[0]}"
     ;;
