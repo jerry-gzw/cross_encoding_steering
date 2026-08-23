@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -65,6 +66,7 @@ def _save_matplotlib_figure(
     pdf_path = figure_dir / f"{name}.pdf"
     fig.savefig(png_path, dpi=300, bbox_inches="tight", pad_inches=0.025)
     fig.savefig(pdf_path, format="pdf", bbox_inches="tight", pad_inches=0.025)
+    _convert_pdf_text_to_outlines(pdf_path)
     legacy_svg_path = figure_dir / f"{name}.svg"
     legacy_svg_path.unlink(missing_ok=True)
     mirror_png_path = ""
@@ -87,9 +89,56 @@ def _save_matplotlib_figure(
         "mirror_png_path": mirror_png_path,
     }
 
+def _convert_pdf_text_to_outlines(pdf_path: Path) -> None:
+    """Convert embedded CID fonts to vector outlines for AAAI compliance."""
+    ghostscript = shutil.which("gs")
+    if ghostscript is None:
+        raise RuntimeError(
+            "Generating AAAI-compliant PDF figures requires Ghostscript (`gs`) "
+            "so figure text can be converted to vector outlines."
+        )
+    outlined_path = pdf_path.with_name(f".{pdf_path.stem}.outlined.pdf")
+    try:
+        subprocess.run(
+            [
+                ghostscript,
+                "-q",
+                "-dNOPAUSE",
+                "-dBATCH",
+                "-sDEVICE=pdfwrite",
+                "-dCompatibilityLevel=1.5",
+                "-dNoOutputFonts",
+                f"-sOutputFile={outlined_path}",
+                str(pdf_path),
+            ],
+            check=True,
+        )
+        outlined_path.replace(pdf_path)
+    finally:
+        outlined_path.unlink(missing_ok=True)
+
+def _configure_main_result_figure_style(plt) -> None:
+    """Keep full-width result figures readable without crowding the data."""
+    _configure_plot_style(plt)
+    plt.rcParams.update(
+        {
+            "font.size": 9.5,
+            "axes.titlesize": 9.5,
+            "axes.labelsize": 9.5,
+            "xtick.labelsize": 9,
+            "ytick.labelsize": 9,
+            "legend.fontsize": 9,
+        }
+    )
+
+
 def _configure_plot_style(plt) -> None:
     plt.rcParams.update(
         {
+            # Embed TrueType outlines in PDF/PS output. Matplotlib otherwise
+            # defaults to Type 3 fonts, which AAAI does not permit in figures.
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
             "font.family": ["DejaVu Sans", "Arial", "sans-serif"],
             "font.size": 8,
             "axes.titlesize": 9,
@@ -104,6 +153,7 @@ def _configure_plot_style(plt) -> None:
             "savefig.facecolor": FIGURE_COLORS["surface"],
         }
     )
+
 
 def _figure_mapping_balanced_factorial_shift(
     frame: pd.DataFrame,
@@ -232,7 +282,7 @@ def _figure_interface_factorial_attribution(
         return None
 
     plt, Line2D = _load_plotting()
-    _configure_plot_style(plt)
+    _configure_main_result_figure_style(plt)
     fig, axes = plt.subplots(
         1,
         2,
@@ -289,13 +339,18 @@ def _figure_interface_factorial_attribution(
             zorder=3,
         )
         for value, position in zip(means[valid], positions):
-            axes[0].text(
-                value + (0.045 if value >= 0 else -0.045),
+            label_offset = 0.055 if offset > 0 else -0.055
+            top_green_label = offset > 0 and np.isclose(
                 position,
+                positions.max(),
+            )
+            axes[0].text(
+                value + (-0.045 if top_green_label else 0.045),
+                position + label_offset,
                 f"{value:+.2f}",
-                ha="left" if value >= 0 else "right",
-                va="center",
-                fontsize=7.1,
+                ha="right" if top_green_label else "left",
+                va="bottom" if offset > 0 else "top",
+                fontsize=7.5,
                 color=color,
             )
     axes[0].axvline(
@@ -306,11 +361,7 @@ def _figure_interface_factorial_attribution(
         zorder=0,
     )
     axes[0].set_yticks(y, MODEL_ORDER)
-    # Leave room above the offset Qwen row so it does not collide with the
-    # panel heading after the figure is reduced to the paper column width.
-    # Reserve a dedicated band above the Qwen row for the two-line legend.
-    # Keeping the legend inside that empty band avoids covering any estimate.
-    # axes[0].set_ylim(-0.35, float(y.max()) + 1.20)
+    axes[0].set_ylim(-0.35, float(y.max()) + 0.35)
     axes[0].set_xlabel("Paired mean effect difference")
     axes[0].set_xlim(-0.86, 2.12)
     axes[0].grid(
@@ -322,20 +373,21 @@ def _figure_interface_factorial_attribution(
     )
     axes[0].legend(
         frameon=False,
-        loc="upper right",
-        bbox_to_anchor=(1, 1.05),
-        ncol=1,
-        columnspacing=0.8,
-        handletextpad=0.4,
+        loc="lower center",
+        bbox_to_anchor=(0.4, 1.0),
+        ncol=2,
+        columnspacing=0.5,
+        handletextpad=0.3,
+        fontsize=9,
     )
     axes[0].text(
         0.0,
-        1.035,
+        1.295,
         "A  Paired attribution differences",
         transform=axes[0].transAxes,
         ha="left",
         va="bottom",
-        fontsize=8.5,
+        fontsize=9.5,
         fontweight="bold",
         color=FIGURE_COLORS["ink"],
     )
@@ -421,7 +473,7 @@ def _figure_interface_factorial_attribution(
         transform=axes[1].transAxes,
         ha="left",
         va="bottom",
-        fontsize=8.5,
+        fontsize=9.5,
         fontweight="bold",
         color=FIGURE_COLORS["ink"],
     )
@@ -430,9 +482,20 @@ def _figure_interface_factorial_attribution(
     fig.subplots_adjust(
         left=0.075,
         right=0.985,
-        top=0.90,
+        top=0.84,
         bottom=0.24,
         wspace=0.27,
+    )
+    # Panel B keeps the original full-height layout. Only Panel A is shortened
+    # to create a separate header band for its external legend.
+    panel_a_box = axes[0].get_position()
+    axes[0].set_position(
+        [
+            panel_a_box.x0,
+            panel_a_box.y0,
+            panel_a_box.width,
+            panel_a_box.height - 0.12,
+        ]
     )
     row = _save_matplotlib_figure(
         fig,
@@ -452,6 +515,7 @@ def _figure_interface_factorial_attribution(
         }
     )
     return row
+
 
 def _figure_layer_attribution_trajectory(
     aggregate: pd.DataFrame,
@@ -479,7 +543,7 @@ def _figure_layer_attribution_trajectory(
         return None
 
     plt, Line2D = _load_plotting()
-    _configure_plot_style(plt)
+    _configure_main_result_figure_style(plt)
     fig, axes = plt.subplots(1, 2, figsize=(8.45, 2.85))
     panels = [
         (
@@ -557,7 +621,7 @@ def _figure_layer_attribution_trajectory(
             transform=axis.transAxes,
             ha="left",
             va="bottom",
-            fontsize=8.5,
+            fontsize=9.5,
             fontweight="bold",
             color=FIGURE_COLORS["ink"],
         )
@@ -599,7 +663,7 @@ def _figure_layer_attribution_trajectory(
     fig.subplots_adjust(
         left=0.09,
         right=0.985,
-        top=0.79,
+        top=0.78,
         bottom=0.23,
         wspace=0.27,
     )
@@ -621,6 +685,7 @@ def _figure_layer_attribution_trajectory(
         }
     )
     return row
+
 
 def _figure_mnli_cross_encoding_attribution(
     by_model_mapping: pd.DataFrame,
