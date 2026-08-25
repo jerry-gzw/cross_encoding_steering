@@ -60,19 +60,11 @@ def model_run_is_complete(model_dir: str | Path) -> bool:
         root / "locked_test_pair_rows.csv",
         root / "specificity_by_mode.csv",
     ]
-    statistics_candidates = [
-        [
-            root / "paired_statistics" / "mode_equal_group_bootstrap_ci.csv",
-            root / "paired_statistics" / "mic_mode_equal_axis_bootstrap_ci.csv",
-        ],
-        [
-            root / "paired_statistics" / "equal_group_paired_comparisons.csv",
-            root / "paired_statistics" / "mic_equal_axis_paired_comparisons.csv",
-        ],
+    statistics_required = [
+        root / "paired_statistics" / "mode_equal_group_bootstrap_ci.csv",
+        root / "paired_statistics" / "equal_group_paired_comparisons.csv",
     ]
-    return all(path.exists() for path in fixed_required) and all(
-        any(path.exists() for path in candidates) for candidates in statistics_candidates
-    )
+    return all(path.exists() for path in fixed_required + statistics_required)
 
 
 def run_single_model_experiment(
@@ -221,7 +213,7 @@ def aggregate_multimodel_outputs(
     selected = _read_completed_table(model_dirs, "selected_settings.csv")
     pair_weighted_ci = _read_completed_table(
         model_dirs,
-        ["paired_statistics/mode_bootstrap_ci.csv", "paired_statistics/mic_mode_bootstrap_ci.csv"],
+        ["paired_statistics/mode_bootstrap_ci.csv"],
     )
     equal_group_ci = _read_completed_table(
         model_dirs,

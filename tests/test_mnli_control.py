@@ -29,16 +29,6 @@ def test_exhaustive_config_contains_all_six_letter_mappings_and_five_randoms():
     assert not config.include_inverse_control
 
 
-def test_legacy_mnli_config_keeps_single_random_compatibility_mode():
-    config = MnliControlConfig.from_json(
-        ROOT / "configs/mnli_non_norm_control.example.json",
-        project_root=ROOT,
-    )
-    assert config.random_seeds == ()
-    assert not config.attribution_analysis
-    assert config.include_inverse_control
-
-
 def test_attribution_statistics_random_adjust_and_cluster_by_premise():
     config = MnliControlConfig.from_json(
         ROOT / "configs/mnli_exhaustive_attribution.example.json",

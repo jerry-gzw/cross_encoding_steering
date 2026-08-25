@@ -129,9 +129,9 @@ def test_multi_judge_aggregation_builds_consensus_and_leave_one_out(tmp_path: Pa
                 }
             )
     for alias, offset, filename in (
-        ("gpt5_1", 0.0, "published_caa_open_ended_judgments.csv"),
-        ("deepseek_v4_pro", 0.2, "published_caa_open_ended_judgments__deepseek_v4_pro.csv"),
-        ("gemini_3_1_pro", -0.2, "published_caa_open_ended_judgments__gemini_3_1_pro.csv"),
+        ("gpt5_1_rubric_v3", 0.0, "published_caa_open_ended_judgments__gpt5_1_rubric_v3.csv"),
+        ("claude_sonnet_4_6_rubric_v3", 0.2, "published_caa_open_ended_judgments__claude_sonnet_4_6_rubric_v3.csv"),
+        ("gemini_3_5_flash_rubric_v3", -0.2, "published_caa_open_ended_judgments__gemini_3_5_flash_rubric_v3.csv"),
     ):
         frame = pd.DataFrame(base_rows)
         frame["judge_score"] += offset
@@ -145,9 +145,9 @@ def test_multi_judge_aggregation_builds_consensus_and_leave_one_out(tmp_path: Pa
     assert tables["published_caa_multi_judge_completeness"]["is_complete"].all()
     aliases = set(tables["published_caa_multi_judge_paired_statistics"]["judge_alias"])
     assert "median_consensus" in aliases
-    assert "consensus_without_gpt5_1" in aliases
-    assert "consensus_without_deepseek_v4_pro" in aliases
-    assert "consensus_without_gemini_3_1_pro" in aliases
+    assert "consensus_without_gpt5_1_rubric_v3" in aliases
+    assert "consensus_without_claude_sonnet_4_6_rubric_v3" in aliases
+    assert "consensus_without_gemini_3_5_flash_rubric_v3" in aliases
 
 
 def test_configured_multi_judge_aggregation_ignores_historical_files(tmp_path: Path) -> None:
@@ -162,8 +162,8 @@ def test_configured_multi_judge_aggregation_ignores_historical_files(tmp_path: P
         )
         for alias, provider, model, filename in (
             ("gpt_v2", "openai_compatible", "gpt-5.1", "gpt_v2.csv"),
-            ("deepseek_v2", "openai_compatible", "deepseek-v4-pro", "deepseek_v2.csv"),
-            ("claude_v2", "anthropic", "claude-sonnet-4-5-20250929", "claude_v2.csv"),
+            ("claude_v2", "anthropic", "claude-sonnet-4-6", "claude_v2.csv"),
+            ("gemini_v2", "gemini", "gemini-3.5-flash", "gemini_v2.csv"),
         )
     )
     config = replace(base, judges=judges)

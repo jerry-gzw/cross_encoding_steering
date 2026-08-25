@@ -84,7 +84,6 @@ Place the source files under `datasets/`:
 datasets/NormBank.csv
 datasets/social-chem-101.v1.0.tsv
 datasets/multinli_1.0_train.jsonl
-datasets/MIC.csv
 datasets/CAA/
 ```
 
@@ -149,12 +148,6 @@ bash scripts/run_validity_controls.sh
 
 # Full six-mapping same-premise MNLI attribution reported in the paper
 bash scripts/run_mnli_exhaustive_attribution.sh
-
-# Additional direct-label and opaque-codeword MNLI comparison
-bash scripts/run_mnli_control.sh
-
-# Binary MIC extraction-position sensitivity (supplement)
-bash scripts/run_mic_position_sensitivity.sh
 ```
 
 The published CAA case study is phase-controlled:

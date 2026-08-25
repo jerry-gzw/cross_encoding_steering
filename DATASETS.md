@@ -45,18 +45,6 @@ one direction under the E/N/C mapping, and evaluates all six A/B/C mappings
 without re-extraction. It is a non-norm comparison for the cross-encoding
 evaluation, not a general NLI benchmark claim.
 
-## Moral Integrity Corpus (MIC)
-
-- Source: Moral Integrity Corpus release.
-- Local path: `datasets/MIC.csv`.
-- Required fields include `split`, `Q`, `A`, `rot`, `moral`, `A_agrees`, and
-  `rot-agree`.
-
-The supplement uses MIC only as a binary extraction-position sensitivity
-check. Pairs keep the dialogue and moral axis fixed while changing the rule of
-thumb. Because binary label swapping algebraically couples semantic-label and
-extraction-index effects, MIC is not used for the main attribution claim.
-
 ## Public CAA repository
 
 - Source: <https://github.com/nrimsky/CAA>

@@ -1536,7 +1536,7 @@ def _make_judge_client(config: CAAJudgeConfig) -> Any:
         from openai import OpenAI
     except ImportError as exc:
         raise RuntimeError(
-            "GPT and DeepSeek judges require the official 'openai' SDK. "
+            "OpenAI-compatible judges require the official 'openai' SDK. "
             "Install with: pip install -e '.[judges]'"
         ) from exc
     return OpenAI(

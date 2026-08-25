@@ -21,7 +21,6 @@ from .iti_probe_audit import run_iti_probe_audit_from_json
 from .layer_attribution_audit import run_layer_attribution_audit_from_json
 from .letter_permutation_audit import run_letter_permutation_audit_from_json
 from .mapping_audit import run_fixed_direction_mapping_audit_from_json
-from .mic import run_mic_pair_audit
 from .mnli_control import run_mnli_control_from_json, run_mnli_statistics_from_json
 from .pairs import audit_split_isolation, summarize_pairs
 from .position_audit import run_extraction_position_audit_from_json
@@ -94,21 +93,6 @@ def cmd_prepare_sc101(args: argparse.Namespace) -> None:
     endpoints = build_ranked_endpoints_from_csv(output_dir / "pairs.csv", output_dir)
     print(endpoints["ranked_endpoint_inventory"].to_string(index=False))
     print(f"Prepared SC101 action-only pairs and endpoints in {output_dir}")
-
-
-def cmd_prepare_mic(args: argparse.Namespace) -> None:
-    tables = run_mic_pair_audit(
-        mic_path=args.input,
-        output_dir=args.output_dir,
-        min_rot_agreement=args.min_rot_agreement,
-        exclude_cross_split_dialogues=True,
-        max_pairs_per_dialogue_axis=args.max_pairs_per_dialogue_axis,
-        min_axis_train_pairs=args.min_axis_train_pairs,
-        min_axis_eval_pairs=args.min_axis_eval_pairs,
-    )
-    pairs_path = Path(args.output_dir).expanduser().resolve() / "pairs.csv"
-    build_ranked_endpoints_from_csv(pairs_path, Path(args.output_dir).expanduser().resolve())
-    print(tables.get("recommendation", pd.DataFrame()).to_string(index=False))
 
 
 def cmd_check_data(args: argparse.Namespace) -> None:
@@ -367,15 +351,6 @@ def build_parser() -> argparse.ArgumentParser:
     config_flags(command)
     command.add_argument("--output-dir", required=True)
     command.set_defaults(func=cmd_prepare_sc101)
-
-    command = sub.add_parser("prepare-mic")
-    command.add_argument("--input", required=True)
-    command.add_argument("--output-dir", required=True)
-    command.add_argument("--min-rot-agreement", type=float, default=3.0)
-    command.add_argument("--max-pairs-per-dialogue-axis", type=int, default=1)
-    command.add_argument("--min-axis-train-pairs", type=int, default=128)
-    command.add_argument("--min-axis-eval-pairs", type=int, default=20)
-    command.set_defaults(func=cmd_prepare_mic)
 
     command = sub.add_parser("run-cross-encoding")
     config_flags(command, models=True)

@@ -81,7 +81,6 @@ outputs are regenerated under `outputs/`.
 - `appendix_mapping_balance_norm_retention_cells.csv`
 - `appendix_mapping_balance_norm_retention_overall.csv`
 - `appendix_per_contrast_sc101.csv`
-- `appendix_per_contrast_mic.csv`
 - `main_mnli_cross_encoding_summary.csv`
 - `appendix_mnli_cross_encoding_by_mapping.csv`
 - `appendix_mnli_cross_encoding_by_model.csv`
@@ -95,7 +94,6 @@ outputs are regenerated under `outputs/`.
 - `main_context_discrimination_statistics.csv`
 - `main_published_caa_mcq_open_ended_comparison.csv`
 - `appendix_context_cluster_bootstrap_sensitivity.csv`
-- `appendix_context_pair_exclusions.csv`
 - `appendix_context_pair_filter_audit.csv`
 - `appendix_pair_vs_group_cluster_inference.csv`
 - `appendix_published_caa_open_ended_paired_statistics.csv`
