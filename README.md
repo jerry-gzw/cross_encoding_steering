@@ -212,6 +212,19 @@ pytest -q
 python -m cross_encoding_steering.cli --help
 ```
 
+## Citation
+```bibtex
+@misc{gao2026doesactivationsteeringcontrol,
+      title={What Does Activation Steering Control? Attribution Across Answer Encodings and Output-Sensitive Subspaces}, 
+      author={Zhiwei Gao and Shaowen Peng and Shoko Wakamiya and Eiji Aramaki},
+      year={2026},
+      eprint={2608.22985},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2608.22985}, 
+}
+```
+
 ## License
 
 MIT. Dataset and model licenses remain with their original publishers.
